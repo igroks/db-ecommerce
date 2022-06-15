@@ -4,5 +4,5 @@ build:
 
 .PHONY: run
 run:
-	@docker run -it db-ecommerce
+	@docker run -v ${PWD}:/app -it db-ecommerce
 	

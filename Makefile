@@ -1,8 +1,11 @@
-.PHONY: build
-build:
-	@docker build -t db-ecommerce .
-
 .PHONY: run
 run:
-	@docker run -v ${PWD}:/app -it db-ecommerce
-	
+	@docker-compose up 
+
+.PHONY: stop
+stop:
+	@docker-compose down
+
+.PHONY: access-container
+access-container:
+	@docker exec -it db-ecommerce_postgres_1 bash

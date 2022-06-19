@@ -1,8 +1,9 @@
-version: '3'
+version: "3"
 services:
   postgres:
-    build: 
+    build:
       context: .
+    restart: always
     environment:
       POSTGRES_PASSWORD: root
     ports:

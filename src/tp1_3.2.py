@@ -1,54 +1,62 @@
 import os
 import re
 
-if not os.path.isfile('resources/amazon-meta.txt'):
-    os.system('sh download-amazon-meta.sh')
+inputFile = 'resources/amazon-meta-test.txt'
 
-products = []
-lineContent = re.compile(r'^(?:  )?([A-Za-z]+):\s*(.+)$')
-reviewsContent = re.compile(r'^    ([0-9]{4})-([0-9]{1,2})-([0-9]{1,2})\s+cutomer:\s+([A-Z0-9]+?)\s+rating:\s+([1-5])\s+votes:\s+([0-9]+?)\s+helpful:\s+([0-9]+)$')
+lineContentRegex = re.compile(r'^(?:  )?([A-Za-z]+):\s*(.+)$')
+reviewsContentRegex = re.compile(r'^    ([0-9]{4})-([0-9]{1,2})-([0-9]{1,2})\s+cutomer:\s+([A-Z0-9]+?)\s+rating:\s+([1-5])\s+votes:\s+([0-9]+?)\s+helpful:\s+([0-9]+)$')
 
-with open('resources/amazon-meta-test.txt') as f:
-    lines = f.readlines()
-    inBlock = ''
-    product = {}
+def downloadInputFile():
+    if not os.path.isfile(inputFile):
+        os.system('sh download-amazon-meta.sh')
 
-    for line in lines:
-        line = line.replace('\n','')
-        if not line and product:
-            products.append(product)
-            product = {}
+def formatLine(line):
+    return line.replace('\n','')
+    
+def readDatasFromFile():
+    products = []
 
-        m = lineContent.match(line)
+    with open(inputFile) as f:
+        lines = f.readlines()
+        attr = ''
+        product = {}
 
-        if m and len(m.groups()) == 2:
-            if m.group(1) ==  'similar':
-                product['similar'] = m.group(2).split('  ')[1:]
-            elif m.group(1) ==  'categories':
-                inBlock = 'categories'
-                product['categories'] = []
-            elif m.group(1) == 'reviews':
-                inBlock = 'reviews'
-            else:
-                product[m.group(1)] = m.group(2)
-        else:
-            if inBlock == 'categories':
-                product['categories'] = list(set(product['categories'] + line.split('|')[1:]))
-            elif inBlock == 'reviews':
-                reviewsMatch = reviewsContent.match(line)
-                if not reviewsMatch:
-                    print('Does not match!')
+        for line in lines:
+            line = formatLine(line)
+
+            if not line and product:
+                products.append(product)
+                product = {}
+
+            contentMatch = lineContentRegex.match(line)
+
+            if contentMatch and len(contentMatch.groups()) == 2:
+                attr, value = contentMatch.groups()
+                if attr == 'similar':
+                    product[attr] = value.split('  ')[1:]
+                elif attr in ['salesrank','Id']:
+                    product[attr] = int(value)
+                elif attr in ['categories', 'reviews']:
+                    product[attr] = []
                 else:
-                    date = f'{reviewsMatch.group(1)}-{reviewsMatch.group(2).rjust(2,"0")}-{reviewsMatch.group(3).rjust(2,"0")}'
-                    if product.get('reviews') is None: 
-                        product['reviews'] = []
-                    product['reviews'].append(
-                        {
-                            'date': date,
-                            'customer': reviewsMatch.group(4),
-                            'rating': reviewsMatch.group(5),
-                            'votes': reviewsMatch.group(6),
-                            'helpful': reviewsMatch.group(7)
-                        }
-                    )
-print(products)
+                    product[attr] = value
+            else:
+                if attr == 'categories':
+                    product[attr] = list(set(product[attr] + line.split('|')[1:]))
+                elif attr == 'reviews':
+                    reviewsMatch = reviewsContentRegex.match(line)
+                    if reviewsMatch:
+                        year, month, day = reviewsMatch.group(1,2,3)
+                        product[attr].append(
+                            {
+                                'date': f'{year}-{month.rjust(2,"0")}-{day.rjust(2,"0")}',
+                                'customer': reviewsMatch.group(4),
+                                'rating': int(reviewsMatch.group(5)),
+                                'votes': int(reviewsMatch.group(6)),
+                                'helpful': int(reviewsMatch.group(7))
+                            }
+                        )
+
+if __name__ == '__main__':
+    downloadInputFile()
+    readDatasFromFile()

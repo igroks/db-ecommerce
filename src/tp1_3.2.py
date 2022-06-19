@@ -1,18 +1,17 @@
 import os
 import re
 
-inputFile = 'resources/amazon-meta-test.txt'
+inputFile = 'resources/amazon-meta.txt'
 
-lineContentRegex = re.compile(r'^(?:  )?([A-Za-z]+):\s*(.+)$')
-reviewsContentRegex = re.compile(r'^    ([0-9]{4})-([0-9]{1,2})-([0-9]{1,2})\s+cutomer:\s+([A-Z0-9]+?)\s+rating:\s+([1-5])\s+votes:\s+([0-9]+?)\s+helpful:\s+([0-9]+)$')
+lineContentRegex = re.compile(r'^(?:)?([A-Za-z]+):\s*(.+)$')
+reviewsContentRegex = re.compile(r'^([0-9]{4})-([0-9]{1,2})-([0-9]{1,2})\s+cutomer:\s+([A-Z0-9]+?)\s+rating:\s+([1-5])\s+votes:\s+([0-9]+?)\s+helpful:\s+([0-9]+)$')
 
 def downloadInputFile():
-    if not os.path.isfile(inputFile):
-        os.system('sh download-amazon-meta.sh')
+    os.system('sh download-amazon-meta.sh')
 
 def formatLine(line):
-    return line.replace('\n','')
-    
+    return re.sub(r'\s{2,}?', ' ', line).replace('\n','').strip()
+
 def readDatasFromFile():
     products = []
 
@@ -40,23 +39,23 @@ def readDatasFromFile():
                     product[attr] = []
                 else:
                     product[attr] = value
-            else:
-                if attr == 'categories':
-                    product[attr] = list(set(product[attr] + line.split('|')[1:]))
-                elif attr == 'reviews':
-                    reviewsMatch = reviewsContentRegex.match(line)
-                    if reviewsMatch:
-                        year, month, day = reviewsMatch.group(1,2,3)
-                        product[attr].append(
-                            {
-                                'date': f'{year}-{month.rjust(2,"0")}-{day.rjust(2,"0")}',
-                                'customer': reviewsMatch.group(4),
-                                'rating': int(reviewsMatch.group(5)),
-                                'votes': int(reviewsMatch.group(6)),
-                                'helpful': int(reviewsMatch.group(7))
-                            }
-                        )
+            elif attr == 'categories':
+                product[attr] = list(set(product[attr] + line.split('|')[1:]))
+            elif attr == 'reviews':
+                reviewsMatch = reviewsContentRegex.match(line)
+                if reviewsMatch:
+                    year, month, day = reviewsMatch.group(1,2,3)
+                    product[attr].append(
+                        {
+                            'date': f'{year}-{month.rjust(2,"0")}-{day.rjust(2,"0")}',
+                            'customer': reviewsMatch.group(4),
+                            'rating': int(reviewsMatch.group(5)),
+                            'votes': int(reviewsMatch.group(6)),
+                            'helpful': int(reviewsMatch.group(7))
+                        }
+                    )
 
 if __name__ == '__main__':
-    downloadInputFile()
+    if not os.path.isfile(inputFile):
+        downloadInputFile()
     readDatasFromFile()

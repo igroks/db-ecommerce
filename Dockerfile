@@ -1,7 +1,9 @@
-FROM arielafonso/postgres:1.0
+FROM python:3.8
 
 WORKDIR /app
 
-RUN apt-get install -y python3
+COPY . .
 
-CMD ["python3","src/tp1_3.2.py"]
+RUN pip3 install -r requirements.txt
+
+CMD ["python","-u","src/tp1_3.2.py"]

@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 # if not os.path.isfile('resources/amazon-meta.txt'):
 #     os.system('sh download-amazon-meta.sh')
 
-load_dotenv('../.env')
+load_dotenv('.env')
 INPUTFILE = os.getenv('INPUT_FILE')
 USER = os.getenv('POSTGRES_USER')
 PASSWORD = os.getenv('POSTGRES_PASSWORD')
@@ -75,10 +75,11 @@ def dbConnect():
         host=HOST,
         database=DATABASE,
         user=USER,
-        password=PASSWORD)
+        password=PASSWORD
+    )
 
     cur = conn.cursor()
-    script = open('../sql_create_schema.txt', 'r')
+    script = open('sql_create_schema.txt', 'r')
     cur.execute(script.read())
 
     # commands = ('CREATE TABLE batatadoce(id INT, nome CHAR)',

@@ -1,20 +1,26 @@
-import os
 import re
+import os
+import psycopg2
+from psycopg2 import Error
+from dotenv import load_dotenv
 
-inputFile = 'resources/amazon-meta.txt'
+load_dotenv('.env')
+inputFile = os.getenv('INPUT_FILE')
+user = os.getenv('POSTGRES_USER')
+password= os.getenv('POSTGRES_PASSWORD')
+host = os.getenv('POSTGRES_HOST')
+port = os.getenv('POSTGRES_DOCKER_PORT')
+database = os.getenv('POSTGRES_DATABASE')
 
 lineContentRegex = re.compile(r'^(?:)?([A-Za-z]+):\s*(.+)$')
 reviewsContentRegex = re.compile(r'^([0-9]{4})-([0-9]{1,2})-([0-9]{1,2})\s+cutomer:\s+([A-Z0-9]+?)\s+rating:\s+([1-5])\s+votes:\s+([0-9]+?)\s+helpful:\s+([0-9]+)$')
-
-def downloadInputFile():
-    os.system('sh download-amazon-meta.sh')
 
 def formatLine(line):
     return re.sub(r'\s{2,}?', ' ', line).replace('\n','').strip()
 
 def readDatasFromFile():
     products = []
-
+   
     with open(inputFile) as f:
         lines = f.readlines()
         attr = ''
@@ -55,7 +61,30 @@ def readDatasFromFile():
                         }
                     )
 
+def initDataBase():
+    try:
+        # Connect to an existing database
+        connection = psycopg2.connect(user, password, host, port, database)
+
+        # Create a cursor to perform database operations
+        cursor = connection.cursor()
+        # Print PostgreSQL details
+        print('PostgreSQL server information')
+        print(connection.get_dsn_parameters(), '\n')
+        # Executing a SQL query
+        cursor.execute('SELECT version();')
+        # Fetch result
+        record = cursor.fetchone()
+        print('You are connected to - ', record, '\n')
+
+    except (Exception, Error) as error:
+        print('Error while connecting to PostgreSQL', error)
+    finally:
+        if (connection):
+            cursor.close()
+            connection.close()
+            print('PostgreSQL connection is closed')
+
 if __name__ == '__main__':
-    if not os.path.isfile(inputFile):
-        downloadInputFile()
     readDatasFromFile()
+    initDataBase()

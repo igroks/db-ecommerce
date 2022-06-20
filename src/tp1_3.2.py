@@ -5,12 +5,12 @@ from psycopg2 import Error
 from dotenv import load_dotenv
 
 load_dotenv('.env')
-inputFile = os.getenv('INPUT_FILE')
-user = os.getenv('POSTGRES_USER')
-password= os.getenv('POSTGRES_PASSWORD')
-host = os.getenv('POSTGRES_HOST')
-port = os.getenv('POSTGRES_DOCKER_PORT')
-database = os.getenv('POSTGRES_DATABASE')
+INPUT_FILE = os.getenv('INPUT_FILE')
+POSTGRES_USER = os.getenv('POSTGRES_USER')
+POSTGRES_PASSWORD = os.getenv('POSTGRES_PASSWORD')
+POSTGRES_HOST = os.getenv('POSTGRES_HOST')
+POSTGRES_DOCKER_PORT = os.getenv('POSTGRES_DOCKER_PORT')
+POSTGRES_DATABASE = os.getenv('POSTGRES_DATABASE')
 
 lineContentRegex = re.compile(r'^(?:)?([A-Za-z]+):\s*(.+)$')
 reviewsContentRegex = re.compile(r'^([0-9]{4})-([0-9]{1,2})-([0-9]{1,2})\s+cutomer:\s+([A-Z0-9]+?)\s+rating:\s+([1-5])\s+votes:\s+([0-9]+?)\s+helpful:\s+([0-9]+)$')
@@ -21,7 +21,7 @@ def formatLine(line):
 def readDatasFromFile():
     products = []
    
-    with open(inputFile) as f:
+    with open(INPUT_FILE) as f:
         lines = f.readlines()
         attr = ''
         product = {}
@@ -61,22 +61,76 @@ def readDatasFromFile():
                         }
                     )
 
-def initDataBase():
+def connectDataBase():
+    return psycopg2.connect(
+        host=POSTGRES_HOST,
+        user=POSTGRES_USER,
+        password=POSTGRES_PASSWORD,
+        database=POSTGRES_DATABASE
+    )
+
+def createTables():
+    commands = [ 
+        '''
+        CREATE TABLE Product( 
+            asin INTEGER PRIMARY KEY,
+            title TEXT,
+            product_group TEXT,
+            salesrank INTEGER,
+            similars INTEGER
+        )
+        ''',
+        '''
+        CREATE TABLE Comments_catalog(
+            cat_asin INTEGER PRIMARY KEY,
+            total INTEGER,
+            downloaded INTEGER,
+            avg_rating INTEGER,
+            FOREIGN KEY(cat_asin) REFERENCES Product(asin)
+        )
+        ''',
+        '''
+        CREATE TABLE Comments(
+            comment_asin INTEGER, 
+            id_client INTEGER,
+            date DATE,
+            rating INTEGER,
+            votes INTEGER,
+            helpful INTEGER,
+            PRIMARY KEY (comment_asin, id_client),
+            FOREIGN KEY(comment_asin) REFERENCES Product(asin)
+        )
+        ''',
+        '''
+        CREATE TABLE Similars(
+            s_asin INTEGER,
+            asin_similars INTEGER,
+            PRIMARY KEY(s_asin, asin_similars),
+            FOREIGN KEY(s_asin) REFERENCES Product(asin)
+        )
+        ''',
+        '''        
+        CREATE TABLE Category(
+            id INTEGER PRIMARY KEY,
+            name TEXT
+        )
+        ''',
+        '''
+        CREATE TABLE Products_per_category(
+            ppc_asin INTEGER PRIMARY KEY, 
+            cat_id INTEGER
+        )
+        '''
+    ] 
+
     try:
-        # Connect to an existing database
-        connection = psycopg2.connect(user, password, host, port, database)
-
-        # Create a cursor to perform database operations
+        connection = connectDataBase()
         cursor = connection.cursor()
-        # Print PostgreSQL details
-        print('PostgreSQL server information')
-        print(connection.get_dsn_parameters(), '\n')
-        # Executing a SQL query
-        cursor.execute('SELECT version();')
-        # Fetch result
-        record = cursor.fetchone()
-        print('You are connected to - ', record, '\n')
-
+        
+        for command in commands:
+            cursor.execute(command)
+        
+        connection.commit()
     except (Exception, Error) as error:
         print('Error while connecting to PostgreSQL', error)
     finally:
@@ -84,66 +138,7 @@ def initDataBase():
             cursor.close()
             connection.close()
             print('PostgreSQL connection is closed')
-
-def create_tables():
-    commands =( 
-        """
-        CREATE TABLE Product( 
-            asin INTEGER PRIMARY KEY
-            title TEXT
-            group TEXT
-            salesrank INTEGER
-            similars INTEGER
-        )
-        """,
-        """
-        CREATE TABLE Comments_catalog(
-            cat_asin INTEGER PRIMARY KEY
-            total INTEGER
-            downloaded INTEGER
-            avg_rating INTEGER
-            FOREIGN KEY(cat_asin)
-            REFERENCES Product(asin)
-        )
-        """,
-        """
-        CREATE TABLE Comments(
-            comment_asin INTEGER 
-            id_client INTEGER 
-            date DATE
-            rating INTEGER
-            votes INTEGER
-            helpful INTEGER 
-            PRIMARY KEY (comment_asin, id_client)
-            FOREIGN KEY(comment_asin)
-            REFERENCES Product(asin)
-        )
-        """,
-
-        """
-        CREATE TABLE Similars(
-            s_asin INTEGER
-            asin_similars INTEGER
-            PRIMARY KEY(s_asin, asin_similars)
-            FOREIGN KEY(s_asin)
-            REFERENCES Product(asin)
-        )"
-        """,
-        
-        """        
-        CREATE TABLE Category(
-            id INTEGER PRIMARY KEY
-            name TEXT
-        )
-        """,
-        """
-        CREATE TABLE Products_per_category(
-            ppc_asin INTEGER 
-            cat_id INTEGER
-            FOREIGN KEY
-        )
-        """
-    ) 
+   
 if __name__ == '__main__':
     readDatasFromFile()
-    initDataBase()
+    createTables()

@@ -1,18 +1,14 @@
 # db-ecommerce
 Practical work of the Database subject at Universidade Federal do Amazonas which aims to design and implement a database on products sold in an e-commerce store, including user ratings and comments about these products. The work consists of creating a Relational Database containing data on product purchases and creating a Dashboard, a panel for monitoring purchase data, generating a series of reports.
 
-## Useful commands
-To donwload input file in JSON format run:
+## Running
+To run it we first need to download the input file, for that we can use the command:
 ```
-make download-amazon-meta
+sh download-amazon-meta.sh
 ```
-To start run:
+Once downloaded we can start using the command:
 ```
 make run
-```
-To access container:
-```
-make access-container
 ```
 To stop:
 ```

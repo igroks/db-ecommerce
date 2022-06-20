@@ -86,15 +86,17 @@ def initDataBase():
             print('PostgreSQL connection is closed')
 
 def create_tables():
-    commands = 
-        "CREATE TABLE Product( 
+    commands =( 
+        """
+        CREATE TABLE Product( 
             asin INTEGER PRIMARY KEY
             title TEXT
             group TEXT
             salesrank INTEGER
             similars INTEGER
         )
-
+        """,
+        """
         CREATE TABLE Comments_catalog(
             cat_asin INTEGER PRIMARY KEY
             total INTEGER
@@ -103,7 +105,8 @@ def create_tables():
             FOREIGN KEY(cat_asin)
             REFERENCES Product(asin)
         )
-
+        """,
+        """
         CREATE TABLE Comments(
             comment_asin INTEGER 
             id_client INTEGER 
@@ -115,7 +118,9 @@ def create_tables():
             FOREIGN KEY(comment_asin)
             REFERENCES Product(asin)
         )
-        
+        """,
+
+        """
         CREATE TABLE Similars(
             s_asin INTEGER
             asin_similars INTEGER
@@ -123,16 +128,15 @@ def create_tables():
             FOREIGN KEY(s_asin)
             REFERENCES Product(asin)
         )"
+        """,
         
-
-        """
-        Falta tirar a dúvida com o professor
-        
+        """        
         CREATE TABLE Category(
             id INTEGER PRIMARY KEY
             name TEXT
         )
-
+        """,
+        """
         CREATE TABLE Products_per_category(
             ppc_asin INTEGER 
             cat_id INTEGER

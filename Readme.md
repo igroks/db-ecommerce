@@ -4,7 +4,7 @@ Practical work of the Database subject at Universidade Federal do Amazonas which
 ## Running
 To run it we first need to download the input file, for that we can use the command:
 ```
-sh download-amazon-meta.sh
+sh scripts/download-amazon-meta.sh
 ```
 Once downloaded we can start using the command:
 ```

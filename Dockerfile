@@ -1,7 +1,13 @@
-FROM arielafonso/postgres:1.0
+FROM python:3.7
 
 WORKDIR /app
 
-RUN apt-get install -y python3
+COPY . .
 
-# CMD ["python3","src/tp1_3.2.py"]
+RUN pip3 install psycopg2
+
+RUN pip3 install python-dotenv
+
+ENTRYPOINT [ "python3" ]
+
+CMD ["src/tp1_3.2.py"]

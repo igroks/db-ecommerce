@@ -1,12 +1,25 @@
 version: "3"
 services:
   postgres:
-    build:
-      context: .
+    env_file: ./.env
+    image: arielafonso/postgres:1.0
     restart: always
     environment:
-      POSTGRES_PASSWORD: root
+      POSTGRES_PASSWORD: $POSTGRES_PASSWORD
     ports:
-      - 5432:5432
+      - $POSTGRES_LOCAL_PORT:$POSTGRES_DOCKER_PORT
+    networks:
+      - app-net
+
+  python:
+    build:
+      context: .
+    depends_on:
+      - postgres
     volumes:
-      - .:/app
+      - ./:/app
+    networks:
+      - app-net
+
+networks:
+  app-net:

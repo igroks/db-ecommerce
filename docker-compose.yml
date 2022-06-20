@@ -9,7 +9,7 @@ services:
     ports:
       - $POSTGRES_LOCAL_PORT:$POSTGRES_DOCKER_PORT
     networks:
-    - app-net
+      - app-net
   
   python:
     build:
@@ -19,7 +19,7 @@ services:
     volumes:
       - ./:/app
     networks:
-    - app-net
+      - app-net
 
 networks:
   app-net:

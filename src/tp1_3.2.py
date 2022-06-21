@@ -30,6 +30,7 @@ def parseData():
         lines = f.readlines()
         inBlock = ''
         product = {}
+        categoriesSet = set()
 
         for line in lines:
             line = re.sub(r'\s{2,}?', ' ', line).replace('\n', '').strip()
@@ -51,8 +52,26 @@ def parseData():
                     product[m.group(1)] = m.group(2)
             else:
                 if inBlock == 'categories':
-                    product['categories'] = list(
-                        set(product['categories'] + line.split('|')[1:]))
+                    lineCategory = line.split('|')[1:]
+                    for i in range(len(lineCategory)):
+                        # individualCategory = re.search(
+                        #     r"(.*)\[(\d+)\]", lineCategory[i])
+                        if i > 0:
+                            fatherCategory = re.search(
+                                r"(.*)\[(\d+)\]", lineCategory[i-1])
+                            childrenCategory = re.search(
+                                r"(.*)\[(\d+)\]", lineCategory[i])
+                            categoriesSet.add((childrenCategory.group(
+                                1), childrenCategory.group(2), fatherCategory.group(2)))
+                        else:
+                            fatherCategory = re.search(
+                                r"(.*)\[(\d+)\]", lineCategory[i])
+                            categoriesSet.add((fatherCategory.group(
+                                1), fatherCategory.group(2), None))
+
+                    # product['categories'] = list(
+                    #     set(product['categories'] + line.split('|')[1:]))
+                    product['categories'] = list(categoriesSet)
                 elif inBlock == 'reviews':
                     reviewsMatch = reviewsContent.match(line)
                     if not reviewsMatch:

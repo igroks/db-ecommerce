@@ -14,9 +14,13 @@ HOST = os.getenv('POSTGRES_HOST')
 PORT = os.getenv('POSTGRES_DOCKER_PORT')
 DATABASE = os.getenv('POSTGRES_DATABASE')
 
-lineContent = re.compile(r'^(?:  )?([A-Za-z]+):\s*(.+)$')
+# lineContent = re.compile(r'^(?:  )?([A-Za-z]+):\s*(.+)$')
+# reviewsContent = re.compile(
+#     r'^    ([0-9]{4})-([0-9]{1,2})-([0-9]{1,2})\s+cutomer:\s+([A-Z0-9]+?)\s+rating:\s+([1-5])\s+votes:\s+([0-9]+?)\s+helpful:\s+([0-9]+)$')
+
+lineContent = re.compile(r'^(?:    )?([A-Za-z]+):\s*(.+)$')
 reviewsContent = re.compile(
-    r'^    ([0-9]{4})-([0-9]{1,2})-([0-9]{1,2})\s+cutomer:\s+([A-Z0-9]+?)\s+rating:\s+([1-5])\s+votes:\s+([0-9]+?)\s+helpful:\s+([0-9]+)$')
+    r'^([0-9]{4})-([0-9]{1,2})-([0-9]{1,2})\s+cutomer:\s+([A-Z0-9]+?)\s+rating:\s+([1-5])\s+votes:\s+([0-9]+?)\s+helpful:\s+([0-9]+)$')
 
 
 def parseData():
@@ -28,7 +32,7 @@ def parseData():
         product = {}
 
         for line in lines:
-            line = line.replace('\n', '')
+            line = re.sub(r'\s{2,}?', ' ', line).replace('\n', '').strip()
             if not line and product:
                 products.append(product)
                 product = {}
@@ -66,7 +70,7 @@ def parseData():
                                 'helpful': reviewsMatch.group(7)
                             }
                         )
-    return product
+    return products
 
 
 def dbConnect():
@@ -82,12 +86,6 @@ def dbConnect():
     script = open('sql_create_schema.txt', 'r')
     cur.execute(script.read())
 
-    # commands = ('CREATE TABLE batatadoce(id INT, nome CHAR)',
-    #             'CREATE TABLE batatadoce2(id INT, nome CHAR)')
-
-    # for command in commands:
-    #     cur.execute(command)
-
     conn.commit()
     cur.close()
     conn.close()
@@ -95,3 +93,7 @@ def dbConnect():
 
 if __name__ == "__main__":
     dbConnect()
+
+    dbItens = parseData()
+    for dbItem in dbItens:
+        print(dbItem)

@@ -1,4 +1,4 @@
-CREATE TABLE Product
+CREATE TABLE IF NOT EXISTS Product
 ( 
     asin INTEGER PRIMARY KEY,
     title TEXT,
@@ -7,7 +7,7 @@ CREATE TABLE Product
     similars INTEGER
 );
 
-CREATE TABLE Comments_catalog
+CREATE TABLE IF NOT EXISTS Comments_catalog
 (
     cat_asin INTEGER PRIMARY KEY,
     total INTEGER,
@@ -16,7 +16,7 @@ CREATE TABLE Comments_catalog
     FOREIGN KEY(cat_asin)
     REFERENCES Product(asin)
 );
-CREATE TABLE Comments
+CREATE TABLE IF NOT EXISTS Comments
 (
     comment_asin INTEGER ,
     id_client INTEGER ,
@@ -29,7 +29,7 @@ CREATE TABLE Comments
     REFERENCES Product(asin)
 );
 
-CREATE TABLE Similars
+CREATE TABLE IF NOT EXISTS Similars
 (
     s_asin INTEGER,
     asin_similars INTEGER,
@@ -38,13 +38,13 @@ CREATE TABLE Similars
     REFERENCES Product(asin)
 );
 
-CREATE TABLE Category
+CREATE TABLE IF NOT EXISTS Category
 (
     id INTEGER PRIMARY KEY,
     name TEXT
 );
 
-CREATE TABLE Products_per_category
+CREATE TABLE IF NOT EXISTS Products_per_category
 (
     ppc_asin INTEGER,
     cat_id INTEGER

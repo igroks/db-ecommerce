@@ -3,9 +3,12 @@ services:
   postgres:
     env_file: ./.env
     image: arielafonso/postgres:1.0
+    stdin_open: true
+    tty: true
     restart: always
     environment:
-      POSTGRES_PASSWORD: $POSTGRES_PASSWORD
+      - POSTGRES_PASSWORD=$POSTGRES_PASSWORD
+      - POSTGRES_DB=$POSTGRES_DATABASE
     ports:
       - $POSTGRES_LOCAL_PORT:$POSTGRES_DOCKER_PORT
     networks:

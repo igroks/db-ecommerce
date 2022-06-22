@@ -37,7 +37,7 @@ schema = [
         total INTEGER,
         downloaded INTEGER,
         avg_rating INTEGER,
-        PRIMARY KEY(cat_asin),
+        PRIMARY KEY(cat_asin)
     )
     ''',
     '''

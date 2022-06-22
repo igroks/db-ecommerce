@@ -87,6 +87,7 @@ def parseData():
         lines = f.readlines()
         inBlock = ''
         product = {}
+        product['product'] = ()
         categoriesSet = set()
 
         for line in lines:
@@ -94,19 +95,20 @@ def parseData():
             if not line and product:
                 products.append(product)
                 product = {}
+                product['product'] = ()
 
             m = lineContent.match(line)
 
             if m and len(m.groups()) == 2:
                 if m.group(1) == 'similar':
-                    product['similar'] = m.group(2).split('  ')[1:]
+                    product['similar'] = m.group(2).split(' ')[1:]
                 elif m.group(1) == 'categories':
                     inBlock = 'categories'
                     product['categories'] = []
                 elif m.group(1) == 'reviews':
                     inBlock = 'reviews'
                 else:
-                    product[m.group(1)] = m.group(2)
+                    product['product'] += (m.group(2),)
             else:
                 if inBlock == 'categories':
                     categoriesSet = set()
@@ -139,13 +141,13 @@ def parseData():
                         if product.get('reviews') is None:
                             product['reviews'] = []
                         product['reviews'].append(
-                            {
-                                'date': date,
-                                'customer': reviewsMatch.group(4),
-                                'rating': reviewsMatch.group(5),
-                                'votes': reviewsMatch.group(6),
-                                'helpful': reviewsMatch.group(7)
-                            }
+                            (
+                                date,
+                                reviewsMatch.group(4),
+                                reviewsMatch.group(5),
+                                reviewsMatch.group(6),
+                                reviewsMatch.group(7)
+                            )
                         )
     return products
 

@@ -11,7 +11,7 @@ POSTGRES_HOST = os.getenv('POSTGRES_HOST')
 POSTGRES_DOCKER_PORT = os.getenv('POSTGRES_DOCKER_PORT')
 POSTGRES_DATABASE = os.getenv('POSTGRES_DATABASE')
 
-lineContentRegex = re.compile(r'^(?:)?([A-Za-z]+):\s*(.+)$')
+lineContentRegex = re.compile(r'^([A-Za-z]+):\s*(.+)$')
 reviewsContentRegex = re.compile(
     r'^([0-9]{4})-([0-9]{1,2})-([0-9]{1,2})\s+cutomer:\s+([A-Z0-9]+?)\s+rating:\s+([1-5])\s+votes:\s+([0-9]+?)\s+helpful:\s+([0-9]+)$'
 )

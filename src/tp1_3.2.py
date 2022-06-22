@@ -74,7 +74,7 @@ attributeMap = {
 }
 
 def normalize(line):
-    return re.sub(r'\s{2,}?', ' ', line).replace('\n','').strip()
+    return re.sub(r'\s{2,}?', ' ', line).replace('\n','').replace('\'','\'\'').strip()
 
 def readDatasFromFile():
     products = []
@@ -138,7 +138,11 @@ def closeDataBase(connection):
         print('PostgreSQL connection is closed')
 
 def buidInsertQuery(table, args):
-    return f'INSERT INTO {table} VALUES {tuple(args)}'.replace('None','NULL')
+    return (
+        f'INSERT INTO {table} VALUES {tuple(args)}'
+        .replace('None','NULL')
+        .replace('"','\'')
+    )
 
 if __name__ == '__main__':
     connection = None

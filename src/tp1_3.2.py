@@ -99,7 +99,7 @@ def readDatasFromFile():
             if attr == 'similar':
                 value = value.split(' ')
                 product['num_similars'] = value[0]
-                product[attr] = value[1:]
+                product['similars'] = value[1:]
             else:
                 product[attr] = value if not attr in ['categories','reviews'] else []
         elif attr == 'categories':
@@ -156,6 +156,14 @@ if __name__ == '__main__':
                 connection, 
                 buidInsertQuery('Product', [product.get(arg) for arg in attributeMap['Product']]),
             )
+            
+            similars = product.get('similars') or None
+            if similars:
+                for similar in similars:
+                    executeCommand (
+                        connection, 
+                        buidInsertQuery('Similars', [product.get('ASIN'), similar]),
+                    )
     except (Exception, psycopg2.Error) as error:
         print('Error while connecting to PostgreSQL', error)
     finally:

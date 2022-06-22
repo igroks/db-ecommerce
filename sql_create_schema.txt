@@ -3,8 +3,7 @@ CREATE TABLE IF NOT EXISTS Product
     asin INTEGER PRIMARY KEY,
     title TEXT,
     product_group TEXT,
-    salesrank INTEGER,
-    similars INTEGER
+    salesrank INTEGER
 );
 
 CREATE TABLE IF NOT EXISTS Comments_catalog
@@ -40,8 +39,9 @@ CREATE TABLE IF NOT EXISTS Similars
 
 CREATE TABLE IF NOT EXISTS Category
 (
+    name TEXT,
     id INTEGER PRIMARY KEY,
-    name TEXT
+    father_id INTEGER
 );
 
 CREATE TABLE IF NOT EXISTS Products_per_category

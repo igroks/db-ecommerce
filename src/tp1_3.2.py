@@ -23,6 +23,63 @@ reviewsContent = re.compile(
     r'^([0-9]{4})-([0-9]{1,2})-([0-9]{1,2})\s+cutomer:\s+([A-Z0-9]+?)\s+rating:\s+([1-5])\s+votes:\s+([0-9]+?)\s+helpful:\s+([0-9]+)$')
 
 
+class Product(object):
+    """Product class -> (asin, title, productGroup, salesrank)"""
+
+    def __init__(self, asin, title=None, productGroup=None, salesrank=None):
+        self.asin = asin
+        self.title = title
+        self.productGroup = productGroup
+        self.salesrank = salesrank
+
+
+class CommentsCatalog(object):
+    """CommentsCatalog class -> (catAsin, total, downloaded, avgRating)"""
+
+    def __init__(self, catAsin, total, downloaded, avgRating):
+        self.catAsin = catAsin
+        self.total = total
+        self.downloaded = downloaded
+        self.avgRating = avgRating
+
+
+class Comments(object):
+    """Comments class -> (commentAsin, idClient, date, rating, votes, helpful)"""
+
+    def __init__(self, commentAsin, idClient, date, rating, votes, helpful):
+        self.commentAsin = commentAsin
+        self.idClient = idClient
+        self.data = date
+        self.rating = rating
+        self.votes = votes
+        self.helpful = helpful
+
+
+class Similars(object):
+    """Similars class -> (sAsin, asinSimilars)"""
+
+    def __init__(self, sAsin, asinSimilars):
+        self.sAsin = sAsin
+        self.asinSimilars = asinSimilars
+
+
+class Category(object):
+    """Category class -> (name, id, fatherId)"""
+
+    def __init__(self, name, id, fatherId):
+        self.name = name
+        self.id = id
+        self.fatherId = fatherId
+
+
+class Products_Per_Category(object):
+    """Products_Per_Category class -> (ppcAsin, catId)"""
+
+    def __init__(self, ppcAsin, catId):
+        self.ppcAsin = ppcAsin
+        self.catId = catId
+
+
 def parseData():
 
     products = []
@@ -52,6 +109,7 @@ def parseData():
                     product[m.group(1)] = m.group(2)
             else:
                 if inBlock == 'categories':
+                    categoriesSet = set()
                     lineCategory = line.split('|')[1:]
                     for i in range(len(lineCategory)):
                         # individualCategory = re.search(

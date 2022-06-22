@@ -12,8 +12,10 @@ POSTGRES_DOCKER_PORT = os.getenv('POSTGRES_DOCKER_PORT')
 POSTGRES_DATABASE = os.getenv('POSTGRES_DATABASE')
 
 lineContentRegex = re.compile(r'^(?:)?([A-Za-z]+):\s*(.+)$')
-reviewsContentRegex = re.compile(r'^([0-9]{4})-([0-9]{1,2})-([0-9]{1,2})\s+cutomer:\s+([A-Z0-9]+?)\s+rating:\s+([1-5])\s+votes:\s+([0-9]+?)\s+helpful:\s+([0-9]+)$')
-schema = [ 
+reviewsContentRegex = re.compile(
+    r'^([0-9]{4})-([0-9]{1,2})-([0-9]{1,2})\s+cutomer:\s+([A-Z0-9]+?)\s+rating:\s+([1-5])\s+votes:\s+([0-9]+?)\s+helpful:\s+([0-9]+)$'
+)
+tables = [ 
     '''
     CREATE TABLE IF NOT EXISTS Product( 
         asin TEXT PRIMARY KEY,
@@ -67,10 +69,11 @@ schema = [
 ]
 
 attributeMap = {
-    'Product':['ASIN','title', 'group', 'salesrank', 'num_similars']
+    'Product':['ASIN', 'title', 'group', 'salesrank', 'num_similars'],
+    'Reviews': ['ASIN', 'customer', 'date', 'rating', 'votes', 'helpful'] 
 }
 
-def formatLine(line):
+def normalize(line):
     return re.sub(r'\s{2,}?', ' ', line).replace('\n','').strip()
 
 def readDatasFromFile():
@@ -83,7 +86,7 @@ def readDatasFromFile():
         lines = f.readlines()
 
     for line in lines:
-        line = formatLine(line)
+        line = normalize(line)
 
         if not line and product:
             products.append(product)
@@ -141,8 +144,8 @@ if __name__ == '__main__':
     connection = None
     try:
         connection = connectDataBase()
-        for t in schema:
-            executeCommand(connection, t)
+        for table in tables:
+            executeCommand(connection, table)
 
         for product in readDatasFromFile():
             executeCommand (

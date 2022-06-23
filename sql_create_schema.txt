@@ -6,25 +6,25 @@ CREATE TABLE IF NOT EXISTS Product
     salesrank INTEGER
 );
 
+CREATE TABLE IF NOT EXISTS Similars
+(
+    p_asin TEXT,
+    s_asin TEXT,
+    PRIMARY KEY(p_asin, s_asin),
+    FOREIGN KEY(p_asin)
+    REFERENCES Product(asin)
+);
+
 CREATE TABLE IF NOT EXISTS Comments
 (
     id SERIAL PRIMARY KEY,
-    product_asin INTEGER ,
+    product_asin TEXT,
     id_client TEXT,
     date DATE,
     rating INTEGER,
     votes INTEGER,
     helpful INTEGER,
     FOREIGN KEY(product_asin)
-    REFERENCES Product(asin)
-);
-
-CREATE TABLE IF NOT EXISTS Similars
-(
-    s_asin INTEGER,
-    asin_similars INTEGER,
-    PRIMARY KEY(s_asin, asin_similars),
-    FOREIGN KEY(s_asin)
     REFERENCES Product(asin)
 );
 
@@ -37,7 +37,7 @@ CREATE TABLE IF NOT EXISTS Category
 
 CREATE TABLE IF NOT EXISTS Products_per_category
 (
-    ppc_asin INTEGER,
+    ppc_asin TEXT,
     cat_id INTEGER,
     PRIMARY KEY (ppc_asin, cat_id),
     FOREIGN KEY (ppc_asin) REFERENCES Product(asin),

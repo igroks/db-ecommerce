@@ -10,6 +10,7 @@ PASSWORD = os.getenv('POSTGRES_PASSWORD')
 HOST = os.getenv('POSTGRES_HOST')
 PORT = os.getenv('POSTGRES_DOCKER_PORT')
 DATABASE = os.getenv('POSTGRES_DATABASE')
+categoriesSet = set()
 
 lineContent = re.compile(r'^(?:    )?([A-Za-z]+):\s*(.+)$')
 reviewsContent = re.compile(
@@ -45,20 +46,20 @@ class Comments(object):
 
 
 class Similars(object):
-    """Similars class -> (sAsin, asinSimilars)"""
+    """Similars class -> (p_asin, s_asin)"""
 
-    def __init__(self, sAsin, asinSimilars):
-        self.sAsin = sAsin
-        self.asinSimilars = asinSimilars
+    def __init__(self, p_asin, s_asin):
+        self.p_asin = p_asin
+        self.s_asin = s_asin
 
 
 class Category(object):
-    """Category class -> (name, id, fatherId)"""
+    """Category class -> (name, id, father_id)"""
 
-    def __init__(self, name, id, fatherId):
+    def __init__(self, name, id, father_id):
         self.name = name
         self.id = id
-        self.fatherId = fatherId
+        self.father_id = father_id
 
 
 class Products_Per_Category(object):
@@ -77,7 +78,7 @@ def parseData():
         inBlock = ''
         product = {}
         product['reviews'] = []
-        product['categories'] = []
+        product['categories'] = set()
         product['similar'] = []
 
         for line in lines:
@@ -86,8 +87,9 @@ def parseData():
                 products.append(product)
                 product = {}
                 product['reviews'] = []
-                product['categories'] = []
+                product['categories'] = set()
                 product['similar'] = []
+                categoriesSet_tmp = set()
 
             m = lineContent.match(line)
 
@@ -96,7 +98,6 @@ def parseData():
                     product['similar'] = m.group(2).split(' ')[1:]
                 elif m.group(1) == 'categories':
                     inBlock = 'categories'
-                    product['categories'] = []
                 elif m.group(1) == 'reviews':
                     inBlock = 'reviews'
                 else:
@@ -106,7 +107,6 @@ def parseData():
                         product[m.group(1)] = m.group(2)
             else:
                 if inBlock == 'categories':
-                    categoriesSet = set()
                     lineCategory = line.split('|')[1:]
                     for i in range(len(lineCategory)):
                         if i > 0:
@@ -114,15 +114,16 @@ def parseData():
                                 r"(.*)\[(\d+)\]", lineCategory[i-1])
                             childrenCategory = re.search(
                                 r"(.*)\[(\d+)\]", lineCategory[i])
-                            categoriesSet.add((childrenCategory.group(
-                                1), childrenCategory.group(2), fatherCategory.group(2)))
+                            categoriesSet_tmp.add((childrenCategory.group(
+                                1), int(childrenCategory.group(2)), int(fatherCategory.group(2))))
                         else:
                             fatherCategory = re.search(
                                 r"(.*)\[(\d+)\]", lineCategory[i])
-                            categoriesSet.add((fatherCategory.group(
-                                1), fatherCategory.group(2), None))
+                            categoriesSet_tmp.add((fatherCategory.group(
+                                1), int(fatherCategory.group(2)), None))
 
-                    product['categories'] = list(categoriesSet)
+                    categoriesSet.update(categoriesSet_tmp)
+                    product['categories'].update(categoriesSet)
                 elif inBlock == 'reviews':
                     reviewsMatch = reviewsContent.match(line)
                     if not reviewsMatch:
@@ -180,6 +181,12 @@ def dbConnect():
     conn.commit()
 
     dbItens = parseData()
+
+    for categorie in categoriesSet:
+        categories = Category(categorie[0], categorie[1], categorie[2])
+        fraseCategories = queryString(categories)
+        cur.execute(fraseCategories)
+
     for dbItem in dbItens[1:-1]:
 
         product = Product(dbItem.get('ASIN'), dbItem.get(
@@ -187,11 +194,17 @@ def dbConnect():
         fraseProduct = queryString(product)
         cur.execute(fraseProduct)
 
+        if dbItem.get('similar') is not None:
+            for similar in dbItem['similar']:
+                similars = Similars(dbItem.get('ASIN'), similar)
+                fraseSimilar = queryString(similars)
+                cur.execute(fraseSimilar)
+
         if dbItem.get('reviews') is not None:
             for comment in dbItem['reviews']:
-                comment = Comments(dbItem.get('ASIN'), comment.get('customer'), comment.get('date'), comment.get(
+                comments = Comments(dbItem.get('ASIN'), comment.get('customer'), comment.get('date'), comment.get(
                     'rating'), comment.get('votes'), comment.get('helpful'))
-                fraseComment = queryString(comment)
+                fraseComment = queryString(comments)
                 cur.execute(fraseComment)
 
     conn.commit()

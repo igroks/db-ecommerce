@@ -63,11 +63,14 @@ class Category(object):
 
 
 class Products_Per_Category(object):
-    """Products_Per_Category class -> (ppcAsin, catId)"""
+    """Products_Per_Category class -> (ppc_asin, cat_id)"""
 
-    def __init__(self, ppcAsin, catId):
-        self.ppcAsin = ppcAsin
-        self.catId = catId
+    def __init__(self, ppc_asin, cat_id):
+        self.ppc_asin = ppc_asin
+        self.cat_id = cat_id
+
+    def __repr__(self) -> str:
+        return f'{self.ppc_asin}, {self.cat_id}'
 
 
 def parseData():
@@ -206,6 +209,13 @@ def dbConnect():
                     'rating'), comment.get('votes'), comment.get('helpful'))
                 fraseComment = queryString(comments)
                 cur.execute(fraseComment)
+
+        if dbItem.get('categories') is not None:
+            for ppc in dbItem['categories']:
+                categories_pp = Products_Per_Category(
+                    dbItem.get('ASIN'), ppc[1])
+                frasePpc = queryString(categories_pp)
+                cur.execute(frasePpc)
 
     conn.commit()
     cur.close()

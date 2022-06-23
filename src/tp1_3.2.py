@@ -21,37 +21,27 @@ tables = [
         asin TEXT PRIMARY KEY,
         title TEXT,
         product_group TEXT,
-        salesrank INTEGER,
-        similars INTEGER
+        salesrank INTEGER
     )
     ''',
     '''
     CREATE TABLE IF NOT EXISTS Similars(
-        s_asin TEXT,
-        asin_similars TEXT,
-        PRIMARY KEY(s_asin, asin_similars),
-        FOREIGN KEY(s_asin) REFERENCES Product(asin)
-    )
-    ''',
-    '''
-    CREATE TABLE IF NOT EXISTS Reviews_catolog(
-        cat_asin TEXT,
-        total INTEGER,
-        downloaded INTEGER,
-        avg_rating INTEGER,
-        PRIMARY KEY(cat_asin)
+        product_asin TEXT,
+        similar_asin TEXT,
+        PRIMARY KEY(product_asin, similar_asin),
+        FOREIGN KEY(product_asin) REFERENCES Product(asin)
     )
     ''',
     '''
     CREATE TABLE IF NOT EXISTS Reviews(
-        comment_asin TEXT, 
+        id SERIAL PRIMARY KEY,
+        product_asin TEXT, 
         id_client TEXT,
         date DATE,
         rating INTEGER,
         votes INTEGER,
         helpful INTEGER,
-        PRIMARY KEY (comment_asin, id_client),
-        FOREIGN KEY(comment_asin) REFERENCES Product(asin)
+        FOREIGN KEY(product_asin) REFERENCES Product(asin)
     )
     ''',
     '''        
@@ -69,8 +59,9 @@ tables = [
 ]
 
 attributeMap = {
-    'Product':['ASIN', 'title', 'group', 'salesrank', 'num_similars'],
-    'Reviews': ['ASIN', 'customer', 'date', 'rating', 'votes', 'helpful'] 
+    'Product': ['asin', 'title', 'product_group', 'salesrank'],
+    'Similars': ['product_asin','similar_asin'],
+    'Reviews': ['product_asin','id_client', 'date', 'rating', 'votes', 'helpful']
 }
 
 def normalize(line):
@@ -97,11 +88,9 @@ def readDatasFromFile():
         if contentMatch and len(contentMatch.groups()) == 2:
             attr, value = contentMatch.groups()
             if attr == 'similar':
-                value = value.split(' ')
-                product['num_similars'] = value[0]
-                product['similars'] = value[1:]
+                product['similars'] = value.split(' ')[1:]
             else:
-                product[attr] = value if not attr in ['categories','reviews'] else []
+                product[attr.lower()] = value if not attr in ['categories','reviews'] else []
         elif attr == 'categories':
             product[attr] = list(set(product[attr] + line.split('|')[1:]))
         elif attr == 'reviews':
@@ -110,7 +99,7 @@ def readDatasFromFile():
                 year, month, day = reviewsMatch.group(1,2,3)
                 product[attr].append({
                     'date': f'{year}-{month.rjust(2,"0")}-{day.rjust(2,"0")}',
-                    'customer': reviewsMatch.group(4),
+                    'id_client': reviewsMatch.group(4),
                     'rating': reviewsMatch.group(5),
                     'votes': reviewsMatch.group(6),
                     'helpful': reviewsMatch.group(7)
@@ -137,9 +126,9 @@ def closeDataBase(connection):
         connection.close()
         print('PostgreSQL connection is closed')
 
-def buidInsertQuery(table, args):
+def buidInsertQuery(table, attributes, values):
     return (
-        f'INSERT INTO {table} VALUES {tuple(args)}'
+        f'INSERT INTO {table} ({",".join(attributes)}) VALUES {tuple(values)}'
         .replace('None','NULL')
         .replace('"','\'')
     )
@@ -154,15 +143,23 @@ if __name__ == '__main__':
         for product in readDatasFromFile():
             executeCommand (
                 connection, 
-                buidInsertQuery('Product', [product.get(arg) for arg in attributeMap['Product']]),
+                buidInsertQuery('Product', attributeMap['Product'], [product.get(arg) for arg in attributeMap['Product']]),
             )
             
-            similars = product.get('similars') or None
+            similars = product.get('similars')
             if similars:
                 for similar in similars:
                     executeCommand (
                         connection, 
-                        buidInsertQuery('Similars', [product.get('ASIN'), similar]),
+                        buidInsertQuery('Similars', attributeMap['Similars'],[product.get('asin'), similar]),
+                    )
+
+            reviews = product.get('reviews')
+            if reviews:
+                for review in reviews:
+                    executeCommand (
+                        connection, 
+                        buidInsertQuery('Reviews', attributeMap['Reviews'], [product.get('asin')] + [review.get(arg) for arg in attributeMap['Reviews'][1:]]),
                     )
     except (Exception, psycopg2.Error) as error:
         print('Error while connecting to PostgreSQL', error)

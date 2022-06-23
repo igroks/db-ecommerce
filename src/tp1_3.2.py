@@ -60,12 +60,12 @@ tables = [
 
 attributeMap = {
     'Product': ['asin', 'title', 'product_group', 'salesrank'],
-    'Similars': ['product_asin','similar_asin'],
-    'Reviews': ['product_asin','id_client', 'date', 'rating', 'votes', 'helpful']
+    'Similars': ['product_asin', 'similar_asin'],
+    'Reviews': ['product_asin', 'id_client', 'date', 'rating', 'votes', 'helpful']
 }
 
 def normalize(line):
-    return re.sub(r'\s{2,}?', ' ', line).replace('\n','').replace('\'','\'\'').strip()
+    return re.sub(r'\s{2,}?', ' ', line).replace('\n','').strip()
 
 def readDatasFromFile():
     products = []
@@ -89,6 +89,8 @@ def readDatasFromFile():
             attr, value = contentMatch.groups()
             if attr == 'similar':
                 product['similars'] = value.split(' ')[1:]
+            elif attr == 'group':
+                product['product_group'] = value
             else:
                 product[attr.lower()] = value if not attr in ['categories','reviews'] else []
         elif attr == 'categories':
@@ -115,9 +117,9 @@ def connectDataBase():
         port=POSTGRES_DOCKER_PORT
     )
 
-def executeCommand(connection, query):
+def executeCommand(connection, command, values=None):
     cursor = connection.cursor()
-    cursor.execute(query)
+    cursor.execute(command, values)
     connection.commit()
     cursor.close()
 
@@ -126,11 +128,11 @@ def closeDataBase(connection):
         connection.close()
         print('PostgreSQL connection is closed')
 
-def buidInsertQuery(table, attributes, values):
-    return (
-        f'INSERT INTO {table} ({",".join(attributes)}) VALUES {tuple(values)}'
-        .replace('None','NULL')
-        .replace('"','\'')
+def buidInsertCommand(table, attributes):
+    return 'INSERT INTO {} ({}) VALUES ({})'.format(
+        table,
+        ','.join(attributes),
+        ','.join(['%s' for _ in range(len(attributes))])
     )
 
 if __name__ == '__main__':
@@ -139,11 +141,12 @@ if __name__ == '__main__':
         connection = connectDataBase()
         for table in tables:
             executeCommand(connection, table)
-
+        
         for product in readDatasFromFile():
             executeCommand (
                 connection, 
-                buidInsertQuery('Product', attributeMap['Product'], [product.get(arg) for arg in attributeMap['Product']]),
+                buidInsertCommand('Product', attributeMap['Product']),
+                ([product.get(arg) for arg in attributeMap['Product']])
             )
             
             similars = product.get('similars')
@@ -151,7 +154,8 @@ if __name__ == '__main__':
                 for similar in similars:
                     executeCommand (
                         connection, 
-                        buidInsertQuery('Similars', attributeMap['Similars'],[product.get('asin'), similar]),
+                        buidInsertCommand('Similars', attributeMap['Similars']),
+                        ([product.get('asin'), similar])
                     )
 
             reviews = product.get('reviews')
@@ -159,7 +163,8 @@ if __name__ == '__main__':
                 for review in reviews:
                     executeCommand (
                         connection, 
-                        buidInsertQuery('Reviews', attributeMap['Reviews'], [product.get('asin')] + [review.get(arg) for arg in attributeMap['Reviews'][1:]]),
+                        buidInsertCommand('Reviews', attributeMap['Reviews']),
+                        ([product.get('asin')] + [review.get(arg) for arg in attributeMap['Reviews'][1:]])
                     )
     except (Exception, psycopg2.Error) as error:
         print('Error while connecting to PostgreSQL', error)

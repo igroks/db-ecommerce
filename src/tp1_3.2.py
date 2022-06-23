@@ -4,36 +4,23 @@ import psycopg2
 from dotenv import load_dotenv
 
 load_dotenv('.env')
-INPUT_FILE = os.getenv('INPUT_FILE')
-POSTGRES_USER = os.getenv('POSTGRES_USER')
-POSTGRES_PASSWORD = os.getenv('POSTGRES_PASSWORD')
-POSTGRES_HOST = os.getenv('POSTGRES_HOST')
-POSTGRES_DOCKER_PORT = os.getenv('POSTGRES_DOCKER_PORT')
-POSTGRES_DATABASE = os.getenv('POSTGRES_DATABASE')
 
-lineContentRegex = re.compile(r'^([A-Za-z]+):\s*(.+)$')
-categoryContentRegex = re.compile(r'^(.*)\[([0-9]+?)\]$')
-reviewsContentRegex = re.compile(
-    r'^([0-9]{4})-([0-9]{1,2})-([0-9]{1,2})\s+cutomer:\s+([A-Z0-9]+?)\s+rating:\s+([1-5])\s+votes:\s+([0-9]+?)\s+helpful:\s+([0-9]+)$'
-)
-tables = [ 
-    '''
+lineContentRegex = re.compile(r'^(\w+):\s*(.+)$')
+categoryContentRegex = re.compile(r'^(.*)\[(\d+?)\]$')
+reviewsContentRegex = re.compile(r'^(\d{4})-(\d{1,2})-(\d{1,2}) \w+: (\w+) \w+: (\w+) \w+: (\w+) \w+: (\w+)$')
+tables = '''
     CREATE TABLE IF NOT EXISTS Product( 
         asin TEXT PRIMARY KEY,
         title TEXT,
         product_group TEXT,
         salesrank INTEGER
-    )
-    ''',
-    '''
+    );
     CREATE TABLE IF NOT EXISTS Similars(
         product_asin TEXT,
         similar_asin TEXT,
         PRIMARY KEY(product_asin, similar_asin),
         FOREIGN KEY(product_asin) REFERENCES Product(asin)
-    )
-    ''',
-    '''
+    );
     CREATE TABLE IF NOT EXISTS Reviews(
         id SERIAL PRIMARY KEY,
         product_asin TEXT, 
@@ -43,44 +30,30 @@ tables = [
         votes INTEGER,
         helpful INTEGER,
         FOREIGN KEY(product_asin) REFERENCES Product(asin)
-    )
-    ''',
-    '''        
+    );
     CREATE TABLE IF NOT EXISTS Category(
         id INTEGER PRIMARY KEY,
         name TEXT
-    )
-    ''',
-    '''
+    );
     CREATE TABLE IF NOT EXISTS Products_per_category(
         product_asin TEXT, 
         category_id INTEGER,
         PRIMARY KEY(product_asin, category_id),
         FOREIGN KEY(product_asin) REFERENCES Product(asin),
         FOREIGN KEY(category_id) REFERENCES Category(id)
-    )
-    '''
-]
-
-attributeMap = {
-    'Product': ['asin', 'title', 'product_group', 'salesrank'],
-    'Similars': ['product_asin', 'similar_asin'],
-    'Reviews': ['product_asin', 'id_client', 'date', 'rating', 'votes', 'helpful'],
-    'Category': ['id', 'name'],
-    'Products_per_category': ['product_asin', 'category_id']
-}
+    );
+'''
 
 def normalize(line):
-    return re.sub(r'\s{2,}?', ' ', line).replace('\n','').strip()
+    return ' '.join(line.split()).replace('\n','').strip()
 
-def readDatasFromFile():
+def readDatasFromFile(file):
     products = []
-    categories = set()
-    lines = None
+    lines = []
     attr = ''
     product = {}
    
-    with open(INPUT_FILE) as f:
+    with open(file) as f:
         lines = f.readlines()
 
     for line in lines:
@@ -96,91 +69,77 @@ def readDatasFromFile():
             attr, value = contentMatch.groups()
             if attr == 'similar':
                 product['similars'] = value.split(' ')[1:]
-            elif attr == 'group':
-                product['product_group'] = value
             elif attr not in ['categories','reviews', 'Id']:
                 product[attr.lower()] = value  
         elif attr == 'categories':
-            if not product.get(attr):
+            if attr not in product:
                 product[attr] = set()
-            for category in line.split('|')[1:]:
-                name, id = categoryContentRegex.match(category).groups()
-                categories.add((id, name))
-                product[attr].add(id)
+            product[attr].update(line.split('|')[1:])
         elif attr == 'reviews':
             reviewsMatch = reviewsContentRegex.match(line)
             if reviewsMatch:
-                if not product.get(attr):
+                if attr not in product:
                     product[attr] = []
                 year, month, day = reviewsMatch.group(1,2,3)
                 product[attr].append({
                     'date': f'{year}-{month.rjust(2,"0")}-{day.rjust(2,"0")}',
-                    'id_client': reviewsMatch.group(4),
+                    'customer': reviewsMatch.group(4),
                     'rating': reviewsMatch.group(5),
                     'votes': reviewsMatch.group(6),
                     'helpful': reviewsMatch.group(7)
                 })
-    return (products, categories)
-
-def connectDataBase():
-    return psycopg2.connect(
-        host=POSTGRES_HOST,
-        user=POSTGRES_USER,
-        password=POSTGRES_PASSWORD,
-        database=POSTGRES_DATABASE,
-        port=POSTGRES_DOCKER_PORT
-    )
-
-def executeCommand(connection, command, values=None):
-    cursor = connection.cursor()
-    cursor.execute(command, values)
-    connection.commit()
-    cursor.close()
-
-def closeDataBase(connection):
-    if (connection):
-        connection.close()
-        print('PostgreSQL connection is closed')
-
-def buidInsertCommand(table, attributes):
-    return 'INSERT INTO {} ({}) VALUES ({})'.format(
-        table,
-        ','.join(attributes),
-        ','.join(['%s' for _ in range(len(attributes))])
-    )
-
-def insert(table, tuple):
-    executeCommand (
-        connection, 
-        buidInsertCommand(table, attributeMap[table]),
-        tuple
-    )
+    return products
 
 if __name__ == '__main__':
     connection = None
+    categories = set()
     try:
-        connection = connectDataBase()
-        for table in tables:
-            executeCommand(connection, table)
+        connection = psycopg2.connect(
+            host=os.getenv('POSTGRES_HOST'),
+            user=os.getenv('POSTGRES_USER'),
+            password=os.getenv('POSTGRES_PASSWORD'),
+            database=os.getenv('POSTGRES_DATABASE'),
+            port=os.getenv('POSTGRES_DOCKER_PORT')
+        )
         
-        products, categories = readDatasFromFile()
-
-        for category in categories:
-            insert('Category', category)
-
-        for product in products:
-            insert('Product', ([product.get(arg) for arg in attributeMap['Product']]))
+        cursor = connection.cursor()
+        cursor.execute(tables)
+        connection.commit()
+        
+        for product in readDatasFromFile(os.getenv('INPUT_FILE')):
+            cursor.execute(
+                'INSERT INTO Product (asin,title,product_group,salesrank) VALUES (%s,%s,%s,%s)',
+                [product.get(arg) for arg in ['asin', 'title', 'group', 'salesrank']]
+            )
             
             for similar in (product.get('similars') or []):
-                insert('Similars', ([product.get('asin'), similar]))
+                cursor.execute(
+                    'INSERT INTO Similars (product_asin,similar_asin) VALUES (%s,%s)',
+                    (product.get('asin'), similar)
+                )
 
             for review in (product.get('reviews') or []):
-                insert('Reviews', ([product.get('asin')] + [review.get(arg) for arg in attributeMap['Reviews'][1:]]))
+                cursor.execute(
+                    'INSERT INTO Reviews (product_asin,id_client,date,rating,votes,helpful) VALUES (%s,%s,%s,%s,%s,%s)',
+                    [product.get('asin')] + [review.get(arg) for arg in ['customer', 'date', 'rating', 'votes', 'helpful']]
+                )
 
             for category in (product.get('categories') or []):
-                insert('Products_per_category', (product.get('asin'), category))
+                name, id = categoryContentRegex.match(category).groups()
+                if id not in categories:
+                    cursor.execute('INSERT INTO Category (id,name) VALUES (%s,%s)', (id, name))
+                    categories.add(id)
+                cursor.execute(
+                    'INSERT INTO Products_per_category (product_asin,category_id) VALUES (%s,%s)',
+                    (product.get('asin'), id)
+                )
+            
+        connection.commit()
     
     except (Exception, psycopg2.Error) as error:
         print('Error while connecting to PostgreSQL', error)
     finally:
-        closeDataBase(connection) 
+        if connection:
+            cursor.close()
+            connection.close()
+            print('PostgreSQL connection is closed')

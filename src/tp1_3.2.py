@@ -12,6 +12,7 @@ POSTGRES_DOCKER_PORT = os.getenv('POSTGRES_DOCKER_PORT')
 POSTGRES_DATABASE = os.getenv('POSTGRES_DATABASE')
 
 lineContentRegex = re.compile(r'^([A-Za-z]+):\s*(.+)$')
+categoryContentRegex = re.compile(r'^(.*)\[([0-9]+?)\]$')
 reviewsContentRegex = re.compile(
     r'^([0-9]{4})-([0-9]{1,2})-([0-9]{1,2})\s+cutomer:\s+([A-Z0-9]+?)\s+rating:\s+([1-5])\s+votes:\s+([0-9]+?)\s+helpful:\s+([0-9]+)$'
 )
@@ -52,8 +53,11 @@ tables = [
     ''',
     '''
     CREATE TABLE IF NOT EXISTS Products_per_category(
-        ppc_asin TEXT PRIMARY KEY, 
-        cat_id INTEGER
+        product_asin TEXT, 
+        category_id INTEGER,
+        PRIMARY KEY(product_asin, category_id),
+        FOREIGN KEY(product_asin) REFERENCES Product(asin),
+        FOREIGN KEY(category_id) REFERENCES Category(id)
     )
     '''
 ]
@@ -61,7 +65,9 @@ tables = [
 attributeMap = {
     'Product': ['asin', 'title', 'product_group', 'salesrank'],
     'Similars': ['product_asin', 'similar_asin'],
-    'Reviews': ['product_asin', 'id_client', 'date', 'rating', 'votes', 'helpful']
+    'Reviews': ['product_asin', 'id_client', 'date', 'rating', 'votes', 'helpful'],
+    'Category': ['id', 'name'],
+    'Products_per_category': ['product_asin', 'category_id']
 }
 
 def normalize(line):
@@ -69,6 +75,7 @@ def normalize(line):
 
 def readDatasFromFile():
     products = []
+    categories = set()
     lines = None
     attr = ''
     product = {}
@@ -91,13 +98,20 @@ def readDatasFromFile():
                 product['similars'] = value.split(' ')[1:]
             elif attr == 'group':
                 product['product_group'] = value
-            else:
-                product[attr.lower()] = value if not attr in ['categories','reviews'] else []
+            elif attr not in ['categories','reviews', 'Id']:
+                product[attr.lower()] = value  
         elif attr == 'categories':
-            product[attr] = list(set(product[attr] + line.split('|')[1:]))
+            if not product.get(attr):
+                product[attr] = set()
+            for category in line.split('|')[1:]:
+                name, id = categoryContentRegex.match(category).groups()
+                categories.add((id, name))
+                product[attr].add(id)
         elif attr == 'reviews':
             reviewsMatch = reviewsContentRegex.match(line)
             if reviewsMatch:
+                if not product.get(attr):
+                    product[attr] = []
                 year, month, day = reviewsMatch.group(1,2,3)
                 product[attr].append({
                     'date': f'{year}-{month.rjust(2,"0")}-{day.rjust(2,"0")}',
@@ -106,7 +120,7 @@ def readDatasFromFile():
                     'votes': reviewsMatch.group(6),
                     'helpful': reviewsMatch.group(7)
                 })
-    return products
+    return (products, categories)
 
 def connectDataBase():
     return psycopg2.connect(
@@ -135,6 +149,13 @@ def buidInsertCommand(table, attributes):
         ','.join(['%s' for _ in range(len(attributes))])
     )
 
+def insert(table, tuple):
+    executeCommand (
+        connection, 
+        buidInsertCommand(table, attributeMap[table]),
+        tuple
+    )
+
 if __name__ == '__main__':
     connection = None
     try:
@@ -142,30 +163,23 @@ if __name__ == '__main__':
         for table in tables:
             executeCommand(connection, table)
         
-        for product in readDatasFromFile():
-            executeCommand (
-                connection, 
-                buidInsertCommand('Product', attributeMap['Product']),
-                ([product.get(arg) for arg in attributeMap['Product']])
-            )
-            
-            similars = product.get('similars')
-            if similars:
-                for similar in similars:
-                    executeCommand (
-                        connection, 
-                        buidInsertCommand('Similars', attributeMap['Similars']),
-                        ([product.get('asin'), similar])
-                    )
+        products, categories = readDatasFromFile()
 
-            reviews = product.get('reviews')
-            if reviews:
-                for review in reviews:
-                    executeCommand (
-                        connection, 
-                        buidInsertCommand('Reviews', attributeMap['Reviews']),
-                        ([product.get('asin')] + [review.get(arg) for arg in attributeMap['Reviews'][1:]])
-                    )
+        for category in categories:
+            insert('Category', category)
+
+        for product in products:
+            insert('Product', ([product.get(arg) for arg in attributeMap['Product']]))
+            
+            for similar in (product.get('similars') or []):
+                insert('Similars', ([product.get('asin'), similar]))
+
+            for review in (product.get('reviews') or []):
+                insert('Reviews', ([product.get('asin')] + [review.get(arg) for arg in attributeMap['Reviews'][1:]]))
+
+            for category in (product.get('categories') or []):
+                insert('Products_per_category', (product.get('asin'), category))
+    
     except (Exception, psycopg2.Error) as error:
         print('Error while connecting to PostgreSQL', error)
     finally:

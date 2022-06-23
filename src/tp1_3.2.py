@@ -3,9 +3,6 @@ import re
 import psycopg2
 from dotenv import load_dotenv
 
-# if not os.path.isfile('resources/amazon-meta.txt'):
-#     os.system('sh download-amazon-meta.sh')
-
 load_dotenv('.env')
 INPUTFILE = os.getenv('INPUT_FILE')
 USER = os.getenv('POSTGRES_USER')
@@ -13,10 +10,6 @@ PASSWORD = os.getenv('POSTGRES_PASSWORD')
 HOST = os.getenv('POSTGRES_HOST')
 PORT = os.getenv('POSTGRES_DOCKER_PORT')
 DATABASE = os.getenv('POSTGRES_DATABASE')
-
-# lineContent = re.compile(r'^(?:  )?([A-Za-z]+):\s*(.+)$')
-# reviewsContent = re.compile(
-#     r'^    ([0-9]{4})-([0-9]{1,2})-([0-9]{1,2})\s+cutomer:\s+([A-Z0-9]+?)\s+rating:\s+([1-5])\s+votes:\s+([0-9]+?)\s+helpful:\s+([0-9]+)$')
 
 lineContent = re.compile(r'^(?:    )?([A-Za-z]+):\s*(.+)$')
 reviewsContent = re.compile(
@@ -36,26 +29,19 @@ class Product(object):
         return f'{self.asin}, {self.title}, {self.product_group}, {self.salesrank}'
 
 
-class CommentsCatalog(object):
-    """CommentsCatalog class -> (catAsin, total, downloaded, avgRating)"""
-
-    def __init__(self, catAsin, total, downloaded, avgRating):
-        self.catAsin = catAsin
-        self.total = total
-        self.downloaded = downloaded
-        self.avgRating = avgRating
-
-
 class Comments(object):
-    """Comments class -> (commentAsin, idClient, date, rating, votes, helpful)"""
+    """Comments class -> (product_asin, id_client, date, rating, votes, helpful)"""
 
-    def __init__(self, commentAsin, idClient, date, rating, votes, helpful):
-        self.commentAsin = commentAsin
-        self.idClient = idClient
-        self.data = date
+    def __init__(self, product_asin, id_client, date, rating, votes, helpful):
+        self.product_asin = product_asin
+        self.id_client = id_client
+        self.date = date
         self.rating = rating
         self.votes = votes
         self.helpful = helpful
+
+    def __repr__(self) -> str:
+        return f'{self.product_asin}, {self.id_client}, {self.date}, {self.rating}, {self.votes}, {self.helpful}'
 
 
 class Similars(object):
@@ -83,16 +69,6 @@ class Products_Per_Category(object):
         self.catId = catId
 
 
-# def createClass(className, *args):
-#     return className(*args)
-
-
-# def addDatabase(*args):
-#     for dataTable in args:
-#         dataTableDict = createClass(dataTable[0], dataTable[1:])
-#         for item in dataTable:
-
-
 def parseData():
 
     products = []
@@ -100,12 +76,18 @@ def parseData():
         lines = f.readlines()
         inBlock = ''
         product = {}
+        product['reviews'] = []
+        product['categories'] = []
+        product['similar'] = []
 
         for line in lines:
             line = re.sub(r'\s{2,}?', ' ', line).replace('\n', '').strip()
             if not line and product:
                 products.append(product)
                 product = {}
+                product['reviews'] = []
+                product['categories'] = []
+                product['similar'] = []
 
             m = lineContent.match(line)
 
@@ -118,7 +100,7 @@ def parseData():
                 elif m.group(1) == 'reviews':
                     inBlock = 'reviews'
                 else:
-                    if m.group(1) == 'ASIN' or m.group(1) == 'salesrank':
+                    if m.group(1) == 'salesrank':
                         product[m.group(1)] = int(m.group(2))
                     else:
                         product[m.group(1)] = m.group(2)
@@ -154,40 +136,27 @@ def parseData():
                             {
                                 'date': date,
                                 'customer': reviewsMatch.group(4),
-                                'rating': reviewsMatch.group(5),
-                                'votes': reviewsMatch.group(6),
-                                'helpful': reviewsMatch.group(7)
+                                'rating': int(reviewsMatch.group(5)),
+                                'votes': int(reviewsMatch.group(6)),
+                                'helpful': int(reviewsMatch.group(7))
                             }
                         )
     return products
 
 
-def formatInsert(tableClass, args):
-    query_fields = args.keys()
-    query_values = args.values()
-    pg_fields = []
-
-    for field in query_fields:
-        pg_fields.append('%(' + field + ')s')
-
-    # print(query_values)
-    # print(pg_fields)
-    query_field_string = ', '.join(query_fields)
-    query_pg_string = ', '.join(pg_fields)
-
-    # return f'INSERT INTO {tableClass} ({query_field_string}) VALUES ({query_pg_string})'.replace('None', 'NULL')
-    return 'INSERT INTO ' + tableClass + '(' + query_field_string + ') VALUES (' + query_pg_string + ')', args
-
-
 def queryString(className):
     p = tuple(className.__dict__.values())
+    k = className.__dict__.keys()
+    query_field_string = ', '.join(k)
+
     typeList = [type(x) for x in className.__dict__.values()]
-    # print(typeList)
     text = ''
     table = className.__class__.__name__
-    insert_query = f"insert into {table} values("
+    insert_query = f"insert into {table} ({query_field_string}) values("
+
     for t in typeList:
         text += '\'{}\',' if t is str else '{},'
+
     text = text[:-1]
     unformatedQuery = insert_query + text + ')'
     formatedQuery = unformatedQuery.format(*p).replace(
@@ -208,23 +177,22 @@ def dbConnect():
     cur = conn.cursor()
     script = open('sql_create_schema.txt', 'r')
     cur.execute(script.read())
+    conn.commit()
 
-    blank = ['{}', '\'{}\'']
     dbItens = parseData()
-    for dbItem in dbItens:
+    for dbItem in dbItens[1:-1]:
 
         product = Product(dbItem.get('ASIN'), dbItem.get(
             'title'), dbItem.get('group'), dbItem.get('salesrank'))
-        frase = queryString(product)
-        print(frase)
-        # insert_query = """insert into Product values({},'{}','{}',{})"""
-        # format_query = insert_query.format(
-        #     product.asin, product.title, product.product_group, product.salesrank).replace(
-        #     '\'None\'', 'NULL').replace('None', 'NULL')
+        fraseProduct = queryString(product)
+        cur.execute(fraseProduct)
 
-        # cur.execute(frase[0], (frase[1]['asin'], frase[1]
-        #             ['title'], frase[1]['product_group'], frase[1]['salesrank']))
-        # cur.execute(frase)
+        if dbItem.get('reviews') is not None:
+            for comment in dbItem['reviews']:
+                comment = Comments(dbItem.get('ASIN'), comment.get('customer'), comment.get('date'), comment.get(
+                    'rating'), comment.get('votes'), comment.get('helpful'))
+                fraseComment = queryString(comment)
+                cur.execute(fraseComment)
 
     conn.commit()
     cur.close()

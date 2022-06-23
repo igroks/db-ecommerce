@@ -1,6 +1,6 @@
 CREATE TABLE IF NOT EXISTS Product
 ( 
-    asin INTEGER PRIMARY KEY,
+    asin TEXT PRIMARY KEY,
     title TEXT,
     product_group TEXT,
     salesrank INTEGER
@@ -8,14 +8,14 @@ CREATE TABLE IF NOT EXISTS Product
 
 CREATE TABLE IF NOT EXISTS Comments
 (
-    comment_asin INTEGER ,
-    id_client INTEGER ,
+    id SERIAL PRIMARY KEY,
+    product_asin INTEGER ,
+    id_client TEXT,
     date DATE,
     rating INTEGER,
     votes INTEGER,
     helpful INTEGER,
-    PRIMARY KEY (comment_asin, id_client),
-    FOREIGN KEY(comment_asin)
+    FOREIGN KEY(product_asin)
     REFERENCES Product(asin)
 );
 

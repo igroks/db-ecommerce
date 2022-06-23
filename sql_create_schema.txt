@@ -6,15 +6,6 @@ CREATE TABLE IF NOT EXISTS Product
     salesrank INTEGER
 );
 
-CREATE TABLE IF NOT EXISTS Comments_catalog
-(
-    cat_asin INTEGER PRIMARY KEY,
-    total INTEGER,
-    downloaded INTEGER,
-    avg_rating INTEGER,
-    FOREIGN KEY(cat_asin)
-    REFERENCES Product(asin)
-);
 CREATE TABLE IF NOT EXISTS Comments
 (
     comment_asin INTEGER ,
@@ -47,5 +38,8 @@ CREATE TABLE IF NOT EXISTS Category
 CREATE TABLE IF NOT EXISTS Products_per_category
 (
     ppc_asin INTEGER,
-    cat_id INTEGER
+    cat_id INTEGER,
+    PRIMARY KEY (ppc_asin, cat_id),
+    FOREIGN KEY (ppc_asin) REFERENCES Product(asin),
+    FOREIGN KEY (cat_id) REFERENCES Category(id)
 );

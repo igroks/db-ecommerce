@@ -102,11 +102,18 @@ if __name__ == '__main__':
             port=os.getenv('POSTGRES_DOCKER_PORT')
         )
         
+        print('Creating tables...', end='') 
         cursor = connection.cursor()
         cursor.execute(tables)
         connection.commit()
+        print('Concluded!')
         
-        for product in readDatasFromFile(os.getenv('INPUT_FILE')):
+        print('Reading file...', end='')
+        products =  readDatasFromFile(os.getenv('INPUT_FILE'))
+        print('Concluded!')
+
+        print('Inserting datas in database, please wait...', end='')
+        for product in products:
             cursor.execute(
                 'INSERT INTO Product (asin,title,product_group,salesrank) VALUES (%s,%s,%s,%s)',
                 [product.get(arg) for arg in ['asin', 'title', 'group', 'salesrank']]
@@ -135,7 +142,7 @@ if __name__ == '__main__':
                 )
             
         connection.commit()
-    
+        print('Concluded!')
     except (Exception, psycopg2.Error) as error:
         print('Error while connecting to PostgreSQL', error)
     finally:

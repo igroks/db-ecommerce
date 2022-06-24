@@ -2,6 +2,7 @@ import os
 import re
 import psycopg2
 from dotenv import load_dotenv
+from tqdm import tqdm
 
 load_dotenv('../.env')
 INPUTFILE = os.getenv('INPUT_FILE')
@@ -160,14 +161,14 @@ def dbConnect():
 
     dbItens, categoriesSet = parseData()
 
-    for categorie in categoriesSet:
+    for categorie in tqdm(categoriesSet, "Inserting into Category Table..."):
         categories = Category(categorie[1], categorie[0])
         keys = list(categories.__dict__.keys())
         values = list(categories.__dict__.values())
         queryString = buidInsertCommand(categories.__class__.__name__, keys)
         cur.execute(queryString, values)
 
-    for dbItem in dbItens[1:-1]:
+    for dbItem in tqdm(dbItens[1:-1], "Inserting into Product table..."):
 
         product = Product(dbItem.get('ASIN'), dbItem.get(
             'title'), dbItem.get('group'), dbItem.get('salesrank'))
@@ -177,7 +178,7 @@ def dbConnect():
         cur.execute(queryString, values)
 
         if dbItem.get('similar') is not None:
-            for similar in dbItem['similar']:
+            for similar in tqdm(dbItem['similar'], "Inserting into Similars table..."):
                 similars = Similars(dbItem.get('ASIN'), similar)
                 keys = list(similars.__dict__.keys())
                 values = list(similars.__dict__.values())
@@ -186,7 +187,7 @@ def dbConnect():
                 cur.execute(queryString, values)
 
         if dbItem.get('reviews') is not None:
-            for comment in dbItem['reviews']:
+            for comment in tqdm(dbItem['reviews'], "Inserting into Comments table..."):
                 comments = Comments(dbItem.get('ASIN'), comment.get('customer'), comment.get('date'), comment.get(
                     'rating'), comment.get('votes'), comment.get('helpful'))
                 keys = list(comments.__dict__.keys())
@@ -196,7 +197,7 @@ def dbConnect():
                 cur.execute(queryString, values)
 
         if dbItem.get('categories') is not None:
-            for ppc in dbItem['categories']:
+            for ppc in tqdm(dbItem['categories'], "Inserting into Products_Per_Category table..."):
                 categories_pp = Products_Per_Category(
                     dbItem.get('ASIN'), ppc)
                 keys = list(categories_pp.__dict__.keys())

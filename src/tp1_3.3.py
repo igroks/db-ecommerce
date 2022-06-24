@@ -1,6 +1,7 @@
 import os
 import psycopg2
 from dotenv import load_dotenv
+from tabulate import tabulate
 
 load_dotenv('../.env')
 INPUTFILE = os.getenv('INPUT_FILE')

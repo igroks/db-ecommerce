@@ -21,6 +21,8 @@ services:
       - ./:/app
     networks:
       - app-net
+    stdin_open: true 
+    tty: true
 
 networks:
   app-net:

@@ -1,6 +1,7 @@
 version: '3'
 services:
   postgres:
+    container_name: 'postgres'
     env_file: ./.env
     image: arielafonso/postgres:1.0
     restart: always
@@ -15,6 +16,7 @@ services:
       - postgres:/var/lib/postgresql/data
   
   python:
+    container_name: 'python'
     build:
       context: .
     depends_on:

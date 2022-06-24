@@ -30,9 +30,8 @@ CREATE TABLE IF NOT EXISTS Comments
 
 CREATE TABLE IF NOT EXISTS Category
 (
-    name TEXT,
-    id INTEGER PRIMARY KEY,
-    father_id INTEGER
+        id INTEGER PRIMARY KEY,
+        name TEXT
 );
 
 CREATE TABLE IF NOT EXISTS Products_per_category

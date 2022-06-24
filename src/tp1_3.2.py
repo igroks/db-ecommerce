@@ -3,18 +3,18 @@ import re
 import psycopg2
 from dotenv import load_dotenv
 
-load_dotenv('.env')
+load_dotenv('../.env')
 INPUTFILE = os.getenv('INPUT_FILE')
 USER = os.getenv('POSTGRES_USER')
 PASSWORD = os.getenv('POSTGRES_PASSWORD')
 HOST = os.getenv('POSTGRES_HOST')
 PORT = os.getenv('POSTGRES_DOCKER_PORT')
 DATABASE = os.getenv('POSTGRES_DATABASE')
-categoriesSet = set()
 
 lineContent = re.compile(r'^(?:    )?([A-Za-z]+):\s*(.+)$')
 reviewsContent = re.compile(
     r'^([0-9]{4})-([0-9]{1,2})-([0-9]{1,2})\s+cutomer:\s+([A-Z0-9]+?)\s+rating:\s+([1-5])\s+votes:\s+([0-9]+?)\s+helpful:\s+([0-9]+)$')
+categoryContent = re.compile(r'^(.*)\[([0-9]+?)\]$')
 
 
 class Product(object):
@@ -54,12 +54,11 @@ class Similars(object):
 
 
 class Category(object):
-    """Category class -> (name, id, father_id)"""
+    """Category class -> (name, id)"""
 
-    def __init__(self, name, id, father_id):
-        self.name = name
+    def __init__(self, name, id):
         self.id = id
-        self.father_id = father_id
+        self.name = name
 
 
 class Products_Per_Category(object):
@@ -76,27 +75,28 @@ class Products_Per_Category(object):
 def parseData():
 
     products = []
-    with open('resources/amazon-meta-sample.txt') as f:
+    with open('../resources/amazon-meta.txt') as f:
         lines = f.readlines()
         inBlock = ''
+        categoriesSet = set()
         product = {}
         product['reviews'] = []
-        product['categories'] = set()
+        # product['categories'] = set()
         product['similar'] = []
-
         for line in lines:
             line = re.sub(r'\s{2,}?', ' ', line).replace('\n', '').strip()
             if not line and product:
                 products.append(product)
                 product = {}
                 product['reviews'] = []
-                product['categories'] = set()
+                # product['categories'] = set()
                 product['similar'] = []
                 categoriesSet_tmp = set()
 
             m = lineContent.match(line)
 
             if m and len(m.groups()) == 2:
+                attr, value = m.groups()
                 if m.group(1) == 'similar':
                     product['similar'] = m.group(2).split(' ')[1:]
                 elif m.group(1) == 'categories':
@@ -108,65 +108,40 @@ def parseData():
                         product[m.group(1)] = int(m.group(2))
                     else:
                         product[m.group(1)] = m.group(2)
-            else:
-                if inBlock == 'categories':
-                    lineCategory = line.split('|')[1:]
-                    for i in range(len(lineCategory)):
-                        if i > 0:
-                            fatherCategory = re.search(
-                                r"(.*)\[(\d+)\]", lineCategory[i-1])
-                            childrenCategory = re.search(
-                                r"(.*)\[(\d+)\]", lineCategory[i])
-                            categoriesSet_tmp.add((childrenCategory.group(
-                                1), int(childrenCategory.group(2)), int(fatherCategory.group(2))))
-                        else:
-                            fatherCategory = re.search(
-                                r"(.*)\[(\d+)\]", lineCategory[i])
-                            categoriesSet_tmp.add((fatherCategory.group(
-                                1), int(fatherCategory.group(2)), None))
-
-                    categoriesSet.update(categoriesSet_tmp)
-                    product['categories'].update(categoriesSet)
-                elif inBlock == 'reviews':
-                    reviewsMatch = reviewsContent.match(line)
-                    if not reviewsMatch:
-                        # print('Does not match!')
-                        pass
-                    else:
-                        date = f'{reviewsMatch.group(1)}-{reviewsMatch.group(2).rjust(2,"0")}-{reviewsMatch.group(3).rjust(2,"0")}'
-                        if product.get('reviews') is None:
-                            product['reviews'] = []
-                        product['reviews'].append(
-                            {
-                                'date': date,
-                                'customer': reviewsMatch.group(4),
-                                'rating': int(reviewsMatch.group(5)),
-                                'votes': int(reviewsMatch.group(6)),
-                                'helpful': int(reviewsMatch.group(7))
-                            }
-                        )
-    return products
+            elif inBlock == 'categories':
+                if not product.get(attr):
+                    product[attr] = set()
+                for category in line.split('|')[1:]:
+                    name, id = categoryContent.match(category).groups()
+                    categoriesSet.add((id, name))
+                    product[attr].add(id)
+            elif inBlock == 'reviews':
+                reviewsMatch = reviewsContent.match(line)
+                if not reviewsMatch:
+                    # print('Does not match!')
+                    pass
+                else:
+                    date = f'{reviewsMatch.group(1)}-{reviewsMatch.group(2).rjust(2,"0")}-{reviewsMatch.group(3).rjust(2,"0")}'
+                    if product.get('reviews') is None:
+                        product['reviews'] = []
+                    product['reviews'].append(
+                        {
+                            'date': date,
+                            'customer': reviewsMatch.group(4),
+                            'rating': int(reviewsMatch.group(5)),
+                            'votes': int(reviewsMatch.group(6)),
+                            'helpful': int(reviewsMatch.group(7))
+                        }
+                    )
+    return products, categoriesSet
 
 
-def queryString(className):
-    p = tuple(className.__dict__.values())
-    k = className.__dict__.keys()
-    query_field_string = ', '.join(k)
-
-    typeList = [type(x) for x in className.__dict__.values()]
-    text = ''
-    table = className.__class__.__name__
-    insert_query = f"insert into {table} ({query_field_string}) values("
-
-    for t in typeList:
-        text += '\'{}\',' if t is str else '{},'
-
-    text = text[:-1]
-    unformatedQuery = insert_query + text + ')'
-    formatedQuery = unformatedQuery.format(*p).replace(
-        '\'None\'', 'NULL').replace('None', 'NULL')
-
-    return formatedQuery
+def buidInsertCommand(table, attributes):
+    return 'INSERT INTO {} ({}) VALUES ({})'.format(
+        table,
+        ','.join(attributes),
+        ','.join(['%s' for _ in range(len(attributes))])
+    )
 
 
 def dbConnect():
@@ -179,43 +154,56 @@ def dbConnect():
     )
 
     cur = conn.cursor()
-    script = open('sql_create_schema.txt', 'r')
+    script = open('../sql_create_schema.txt', 'r')
     cur.execute(script.read())
     conn.commit()
 
-    dbItens = parseData()
+    dbItens, categoriesSet = parseData()
 
     for categorie in categoriesSet:
-        categories = Category(categorie[0], categorie[1], categorie[2])
-        fraseCategories = queryString(categories)
-        cur.execute(fraseCategories)
+        categories = Category(categorie[1], categorie[0])
+        keys = list(categories.__dict__.keys())
+        values = list(categories.__dict__.values())
+        queryString = buidInsertCommand(categories.__class__.__name__, keys)
+        cur.execute(queryString, values)
 
     for dbItem in dbItens[1:-1]:
 
         product = Product(dbItem.get('ASIN'), dbItem.get(
             'title'), dbItem.get('group'), dbItem.get('salesrank'))
-        fraseProduct = queryString(product)
-        cur.execute(fraseProduct)
+        keys = list(product.__dict__.keys())
+        values = list(product.__dict__.values())
+        queryString = buidInsertCommand(product.__class__.__name__, keys)
+        cur.execute(queryString, values)
 
         if dbItem.get('similar') is not None:
             for similar in dbItem['similar']:
                 similars = Similars(dbItem.get('ASIN'), similar)
-                fraseSimilar = queryString(similars)
-                cur.execute(fraseSimilar)
+                keys = list(similars.__dict__.keys())
+                values = list(similars.__dict__.values())
+                queryString = buidInsertCommand(
+                    similars.__class__.__name__, keys)
+                cur.execute(queryString, values)
 
         if dbItem.get('reviews') is not None:
             for comment in dbItem['reviews']:
                 comments = Comments(dbItem.get('ASIN'), comment.get('customer'), comment.get('date'), comment.get(
                     'rating'), comment.get('votes'), comment.get('helpful'))
-                fraseComment = queryString(comments)
-                cur.execute(fraseComment)
+                keys = list(comments.__dict__.keys())
+                values = list(comments.__dict__.values())
+                queryString = buidInsertCommand(
+                    comments.__class__.__name__, keys)
+                cur.execute(queryString, values)
 
         if dbItem.get('categories') is not None:
             for ppc in dbItem['categories']:
                 categories_pp = Products_Per_Category(
-                    dbItem.get('ASIN'), ppc[1])
-                frasePpc = queryString(categories_pp)
-                cur.execute(frasePpc)
+                    dbItem.get('ASIN'), ppc)
+                keys = list(categories_pp.__dict__.keys())
+                values = list(categories_pp.__dict__.values())
+                queryString = buidInsertCommand(
+                    categories_pp.__class__.__name__, keys)
+                cur.execute(queryString, values)
 
     conn.commit()
     cur.close()

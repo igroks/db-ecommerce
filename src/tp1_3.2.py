@@ -2,6 +2,7 @@ import re
 import os
 import psycopg2
 from dotenv import load_dotenv
+from tqdm import tqdm
 
 load_dotenv('.env')
 
@@ -24,8 +25,8 @@ tables = '''
     CREATE TABLE IF NOT EXISTS Reviews(
         id SERIAL PRIMARY KEY NOT NULL,
         product_asin TEXT NOT NULL, 
-        id_client TEXT NOT NULL,
         date DATE NOT NULL,
+        id_client TEXT NOT NULL,
         rating INTEGER,
         votes INTEGER,
         helpful INTEGER,
@@ -44,55 +45,55 @@ tables = '''
     );
 '''
 
+products = []
+categories = set()
+similars = set()
+reviews = []
+productsByCategories = set()
+
 def normalize(line):
     return ' '.join(line.split()).replace('\n','').strip()
 
 def readDatasFromFile(file):
-    products = []
-    lines = []
     attr = ''
     product = {}
    
     with open(file) as f:
-        lines = f.readlines()
+        for line in tqdm(f.readlines(),'Reading file'):
+            line = normalize(line)
 
-    for line in lines:
-        line = normalize(line)
+            if not line and product:
+                products.append(product)
+                product = {}
 
-        if not line and product:
-            products.append(product)
-            product = {}
+            contentMatch = lineContentRegex.match(line)
 
-        contentMatch = lineContentRegex.match(line)
-
-        if contentMatch and len(contentMatch.groups()) == 2:
-            attr, value = contentMatch.groups()
-            if attr == 'similar':
-                product['similars'] = value.split(' ')[1:]
-            elif attr not in ['categories','reviews', 'Id']:
-                product[attr.lower()] = value  
-        elif attr == 'categories':
-            if attr not in product:
-                product[attr] = set()
-            product[attr].update(line.split('|')[1:])
-        elif attr == 'reviews':
-            reviewsMatch = reviewsContentRegex.match(line)
-            if reviewsMatch:
-                if attr not in product:
-                    product[attr] = []
-                year, month, day = reviewsMatch.group(1,2,3)
-                product[attr].append({
-                    'date': f'{year}-{month.rjust(2,"0")}-{day.rjust(2,"0")}',
-                    'customer': reviewsMatch.group(4),
-                    'rating': reviewsMatch.group(5),
-                    'votes': reviewsMatch.group(6),
-                    'helpful': reviewsMatch.group(7)
-                })
-    return products
+            if contentMatch and len(contentMatch.groups()) == 2:
+                attr, value = contentMatch.groups()
+                if attr == 'similar':
+                    similars.update([(product['asin'], similar) for similar in value.split(' ')[1:]])
+                elif attr not in ['categories','reviews', 'Id']:
+                    product[attr.lower()] = value  
+            elif attr == 'categories':
+                for category in line.split('|')[1:]:
+                    name, id = categoryContentRegex.match(category).groups()
+                    productsByCategories.add((product['asin'], id))
+                    categories.add((id, name))
+            elif attr == 'reviews':
+                reviewsMatch = reviewsContentRegex.match(line)
+                if reviewsMatch:
+                    year, month, day = reviewsMatch.group(1,2,3)
+                    reviews.append((
+                        product['asin'],
+                        f'{year}-{month.rjust(2,"0")}-{day.rjust(2,"0")}',
+                        reviewsMatch.group(4),
+                        reviewsMatch.group(5),
+                        reviewsMatch.group(6),
+                        reviewsMatch.group(7)
+                    ))
 
 if __name__ == '__main__':
     connection = None
-    categories = set()
     try:
         connection = psycopg2.connect(
             host=os.getenv('POSTGRES_HOST'),
@@ -102,47 +103,40 @@ if __name__ == '__main__':
             port=os.getenv('POSTGRES_DOCKER_PORT')
         )
         
-        print('Creating tables...', end='') 
+        print('Creating tables... ')
         cursor = connection.cursor()
         cursor.execute(tables)
         connection.commit()
-        print('Concluded!')
         
-        print('Reading file...', end='')
-        products =  readDatasFromFile(os.getenv('INPUT_FILE'))
-        print('Concluded!')
+        readDatasFromFile(os.getenv('INPUT_FILE'))
 
-        print('Inserting datas in database, please wait...', end='')
-        for product in products:
+        for product in tqdm(products,'Insert into Product'):
             cursor.execute(
                 'INSERT INTO Product (asin,title,product_group,salesrank) VALUES (%s,%s,%s,%s)',
                 [product.get(arg) for arg in ['asin', 'title', 'group', 'salesrank']]
             )
-            
-            for similar in (product.get('similars') or []):
-                cursor.execute(
-                    'INSERT INTO Similars (product_asin,similar_asin) VALUES (%s,%s)',
-                    (product.get('asin'), similar)
-                )
-
-            for review in (product.get('reviews') or []):
-                cursor.execute(
-                    'INSERT INTO Reviews (product_asin,id_client,date,rating,votes,helpful) VALUES (%s,%s,%s,%s,%s,%s)',
-                    [product.get('asin')] + [review.get(arg) for arg in ['customer', 'date', 'rating', 'votes', 'helpful']]
-                )
-
-            for category in (product.get('categories') or []):
-                name, id = categoryContentRegex.match(category).groups()
-                if id not in categories:
-                    cursor.execute('INSERT INTO Category (id,name) VALUES (%s,%s)', (id, name))
-                    categories.add(id)
-                cursor.execute(
-                    'INSERT INTO Products_per_category (product_asin,category_id) VALUES (%s,%s)',
-                    (product.get('asin'), id)
-                )
-            
         connection.commit()
-        print('Concluded!')
+
+        for similar in tqdm(similars,'Insert into Similars'):
+            cursor.execute('INSERT INTO Similars (product_asin,similar_asin) VALUES (%s,%s)', similar)
+        connection.commit()
+
+        for review in tqdm(reviews,'Insert into Reviews'):
+            cursor.execute(
+                'INSERT INTO Reviews (product_asin,date,id_client,rating,votes,helpful) VALUES (%s,%s,%s,%s,%s,%s)',
+                review
+            )
+        connection.commit()
+
+        for category in tqdm(categories,'Insert into Category'):
+            cursor.execute('INSERT INTO Category (id,name) VALUES (%s,%s)', category)
+        connection.commit()
+
+        for productAndCategory in tqdm(productsByCategories,'Insert into Products_per_category'): 
+            cursor.execute('INSERT INTO Products_per_category (product_asin,category_id) VALUES (%s,%s)', productAndCategory)
+        connection.commit()
+
+        print('All inserts finished!')
     except (Exception, psycopg2.Error) as error:
         print('Error while connecting to PostgreSQL', error)
     finally:

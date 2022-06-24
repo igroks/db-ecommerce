@@ -1,8 +1,7 @@
 #!/bin/bash
-if ! [ -d /resources]; then
-    mkdir resources
+if ! [ -d ./resources ]; then
+     echo "Não tem pasta"
 fi 
-if ! [ -f /resources/amazon-meta.txt]; then
-    wget https://snap.stanford.edu/data/bigdata/amazon/amazon-meta.txt.gz -O resources/amazon-meta.txt.gz
-    gunzip resources/amazon-meta.txt.gz
+if ! [ -f ./resources/amazon-meta.txt ]; then
+    echo "Não tem arquivo"
 fi

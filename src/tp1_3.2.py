@@ -19,7 +19,7 @@ reviewsContentRegex = re.compile(
 tables = [ 
     '''
     CREATE TABLE IF NOT EXISTS Product( 
-        asin TEXT PRIMARY KEY,
+        asin TEXT PRIMARY KEY NOT NULL,
         title TEXT,
         product_group TEXT,
         salesrank INTEGER
@@ -27,18 +27,18 @@ tables = [
     ''',
     '''
     CREATE TABLE IF NOT EXISTS Similars(
-        product_asin TEXT,
-        similar_asin TEXT,
+        product_asin TEXT NOT NULL,
+        similar_asin TEXT NOT NULL,
         PRIMARY KEY(product_asin, similar_asin),
         FOREIGN KEY(product_asin) REFERENCES Product(asin)
     )
     ''',
     '''
     CREATE TABLE IF NOT EXISTS Reviews(
-        id SERIAL PRIMARY KEY,
-        product_asin TEXT, 
-        id_client TEXT,
-        date DATE,
+        id SERIAL PRIMARY KEY NOT NULL,
+        product_asin TEXT NOT NULL, 
+        id_client TEXT NOT NULL,
+        date DATE NOT NULL,
         rating INTEGER,
         votes INTEGER,
         helpful INTEGER,
@@ -47,14 +47,14 @@ tables = [
     ''',
     '''        
     CREATE TABLE IF NOT EXISTS Category(
-        id INTEGER PRIMARY KEY,
+        id INTEGER PRIMARY KEY NOT NULL,
         name TEXT
     )
     ''',
     '''
     CREATE TABLE IF NOT EXISTS Products_per_category(
-        product_asin TEXT, 
-        category_id INTEGER,
+        product_asin TEXT NOT NULL, 
+        category_id INTEGER NOT NULL,
         PRIMARY KEY(product_asin, category_id),
         FOREIGN KEY(product_asin) REFERENCES Product(asin),
         FOREIGN KEY(category_id) REFERENCES Category(id)

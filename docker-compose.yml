@@ -11,6 +11,8 @@ services:
       - $POSTGRES_LOCAL_PORT:$POSTGRES_DOCKER_PORT
     networks:
       - app-net
+    volumes:
+      - ./postgres:/var/lib/postgresql/
   
   python:
     build:

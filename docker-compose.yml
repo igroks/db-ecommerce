@@ -7,6 +7,9 @@ services:
     environment:
       - POSTGRES_PASSWORD=$POSTGRES_PASSWORD
       - POSTGRES_DB=$POSTGRES_DATABASE
+    volumes:
+      - ./sql:/docker-entrypoint-initdb.d
+      - pg-data:/var/lib/postgresql/data
     ports:
       - $POSTGRES_LOCAL_PORT:$POSTGRES_DOCKER_PORT
     networks:

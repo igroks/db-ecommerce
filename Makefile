@@ -28,3 +28,7 @@ stop:
 access-postgres:
 	@docker exec -it postgres psql -U postgres
 
+.PHONY: access-python
+access-python:
+	@docker exec -it python bash 
+

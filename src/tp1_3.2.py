@@ -5,7 +5,6 @@ from dotenv import load_dotenv
 from tqdm import tqdm
 
 load_dotenv('../.env')
-INPUTFILE = os.getenv('INPUT_FILE')
 USER = os.getenv('POSTGRES_USER')
 PASSWORD = os.getenv('POSTGRES_PASSWORD')
 HOST = os.getenv('POSTGRES_HOST')
@@ -84,7 +83,7 @@ def parseData():
         product['reviews'] = []
         # product['categories'] = set()
         product['similar'] = []
-        for line in lines:
+        for line in tqdm(lines, "Reading file amazon-meta.txt..."):
             line = re.sub(r'\s{2,}?', ' ', line).replace('\n', '').strip()
             if not line and product:
                 products.append(product)
@@ -145,13 +144,23 @@ def buidInsertCommand(table, attributes):
     )
 
 
+def queryString(table, cur):
+
+    keys = list(table.__dict__.keys())
+    values = list(table.__dict__.values())
+    queryString = buidInsertCommand(
+        table.__class__.__name__, keys)
+    cur.execute(queryString, values)
+
+
 def dbConnect():
 
     conn = psycopg2.connect(
         host=HOST,
         database=DATABASE,
         user=USER,
-        password=PASSWORD
+        password=PASSWORD,
+        port=PORT
     )
 
     cur = conn.cursor()
@@ -161,50 +170,32 @@ def dbConnect():
 
     dbItens, categoriesSet = parseData()
 
-    for categorie in tqdm(categoriesSet, "Inserting into Category Table..."):
+    for categorie in categoriesSet:
         categories = Category(categorie[1], categorie[0])
-        keys = list(categories.__dict__.keys())
-        values = list(categories.__dict__.values())
-        queryString = buidInsertCommand(categories.__class__.__name__, keys)
-        cur.execute(queryString, values)
+        queryString(categories, cur)
 
-    for dbItem in tqdm(dbItens[1:-1], "Inserting into Product table..."):
+    for dbItem in tqdm(dbItens[1:-1], "Inserting into amazon_meta database..."):
 
         product = Product(dbItem.get('ASIN'), dbItem.get(
             'title'), dbItem.get('group'), dbItem.get('salesrank'))
-        keys = list(product.__dict__.keys())
-        values = list(product.__dict__.values())
-        queryString = buidInsertCommand(product.__class__.__name__, keys)
-        cur.execute(queryString, values)
+        queryString(product, cur)
 
         if dbItem.get('similar') is not None:
-            for similar in tqdm(dbItem['similar'], "Inserting into Similars table..."):
+            for similar in dbItem['similar']:
                 similars = Similars(dbItem.get('ASIN'), similar)
-                keys = list(similars.__dict__.keys())
-                values = list(similars.__dict__.values())
-                queryString = buidInsertCommand(
-                    similars.__class__.__name__, keys)
-                cur.execute(queryString, values)
+                queryString(similars, cur)
 
         if dbItem.get('reviews') is not None:
-            for comment in tqdm(dbItem['reviews'], "Inserting into Comments table..."):
+            for comment in dbItem['reviews']:
                 comments = Comments(dbItem.get('ASIN'), comment.get('customer'), comment.get('date'), comment.get(
                     'rating'), comment.get('votes'), comment.get('helpful'))
-                keys = list(comments.__dict__.keys())
-                values = list(comments.__dict__.values())
-                queryString = buidInsertCommand(
-                    comments.__class__.__name__, keys)
-                cur.execute(queryString, values)
+                queryString(comments, cur)
 
         if dbItem.get('categories') is not None:
-            for ppc in tqdm(dbItem['categories'], "Inserting into Products_Per_Category table..."):
+            for ppc in dbItem['categories']:
                 categories_pp = Products_Per_Category(
                     dbItem.get('ASIN'), ppc)
-                keys = list(categories_pp.__dict__.keys())
-                values = list(categories_pp.__dict__.values())
-                queryString = buidInsertCommand(
-                    categories_pp.__class__.__name__, keys)
-                cur.execute(queryString, values)
+                queryString(categories_pp, cur)
 
     conn.commit()
     cur.close()

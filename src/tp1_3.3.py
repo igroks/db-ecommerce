@@ -138,13 +138,17 @@ def clientMoreComments():
     cur = conn.cursor()
 
     print('G) 10 clientes que mais fizeram comentários por grupo de produto\n')
-    queryString = """SELECT rank_clients.id_client
-                     FROM ( SELECT p.*, r.*,
-                     rank() OVER (
-                     PARTITION BY p.product_group 
-                     ORDER BY COUNT(p.product_group) DESC ) 
-                     FROM Product p, Comments r) rank_clients 
-                     WHERE RANK <=10"""
+    queryString = """SELECT * FROM (
+                        SELECT *, ROW_NUMBER() OVER (PARTITION BY grupo ORDER BY comentarios DESC) AS n 
+                        FROM (
+                            SELECT p.product_group as grupo, c.id_client as cliente_id, COUNT(*) AS comentarios 
+                            FROM Comments c
+                            INNER JOIN Product p ON c.product_asin = p.asin
+                            GROUP BY p.product_group, c.id_client
+                            ORDER BY comentarios DESC
+                            ) AS x
+                        ) AS y
+                     WHERE n <= 10;"""
     cur.execute(queryString)
     result = cur.fetchall()
     resultLabels = ['']
@@ -216,5 +220,7 @@ if __name__ == "__main__":
                     higherReviewAvarageCategory()
                 elif f == 'g':
                     clientMoreComments()
+                else:
+                    continue
 
         flag = prompt()

@@ -13,7 +13,7 @@ DATABASE = os.getenv('POSTGRES_DATABASE')
 
 
 def usefulComment():
-    print('os 5 comentários mais úteis e com maior avaliação e os 5 comentários mais úteis e com menor avaliação.\n')
+    print('A) os 5 comentários mais úteis e com maior avaliação e os 5 comentários mais úteis e com menor avaliação.\n')
     conn = dbConnect()
     cur = conn.cursor()
     # queryString = """(SELECT *
@@ -29,19 +29,17 @@ def usefulComment():
                       ORDER BY rating, helpful desc limit 5);"""
     cur.execute(queryString)
     result = cur.fetchall()
-    l = []
-    columNames = [column[0] for column in cur.description]
-    for row in result:
-        l.append(dict(zip(columNames, row)))
-    for value in l:
-        print(value)
+    resultLabels = ['id', 'id_client', 'rating', 'votes', 'helpful']
+    print(tabulate(result, headers=resultLabels))
+
+    print('\n')
 
 
 def similarMoreSales():
     conn = dbConnect()
     cur = conn.cursor()
 
-    print('os 5 comentários mais úteis e com maior avaliação\n')
+    print('B) os 5 comentários mais úteis e com maior avaliação\n')
     queryString = """SELECT title
                      FROM  product p 
                      INNER JOIN (SELECT s_asin FROM similars WHERE p_asin ='0827229534') s
@@ -50,8 +48,9 @@ def similarMoreSales():
     """
     cur.execute(queryString)
     result = cur.fetchall()
-    for row in result:
-        print(row)
+    resultLabels = ['title']
+    print(tabulate(result, headers=resultLabels))
+    print(tabulate(result))
 
     print('\n')
 
@@ -60,7 +59,7 @@ def dailyEvolution():
     conn = dbConnect()
     cur = conn.cursor()
 
-    print('a evolução diária das médias de avaliação ao longo do intervalo de tempo coberto no arquivo de entrada\n')
+    print('C) a evolução diária das médias de avaliação ao longo do intervalo de tempo coberto no arquivo de entrada\n')
     queryString = """SELECT date, AVG(rating)
            FROM comments
            WHERE product_asin = '0231118597'
@@ -68,8 +67,8 @@ def dailyEvolution():
            ORDER BY date ASC;"""
     cur.execute(queryString)
     result = cur.fetchall()
-    for row in result:
-        print(row)
+    resultLabels = ['date', 'AVG(rating)']
+    print(tabulate(result, headers=resultLabels))
 
     print('\n')
 
@@ -78,14 +77,14 @@ def saleLeaders():
     conn = dbConnect()
     cur = conn.cursor()
 
-    print('10 produtos líderes de venda em cada grupo de produtos\n')
+    print('D) 10 produtos líderes de venda em cada grupo de produtos\n')
     queryString = """SELECT title 
                      FROM ( SELECT title, rank() OVER (PARTITION BY product_group ORDER BY salesrank DESC ) 
                      FROM Product ) Product WHERE RANK <=10 LIMIT 40;"""
     cur.execute(queryString)
     result = cur.fetchall()
-    for row in result:
-        print(row)
+    resultLabels = ['title']
+    print(tabulate(result, headers=resultLabels))
 
     print('\n')
 
@@ -94,7 +93,7 @@ def higherReviewAvarageProduct():
     conn = dbConnect()
     cur = conn.cursor()
 
-    print('10 produtos com a maior média de avaliações úteis positivas por produto\n')
+    print('E) 10 produtos com a maior média de avaliações úteis positivas por produto\n')
     queryString = """SELECT asin, title, product_group 
                      FROM product p
                      INNER JOIN 
@@ -103,8 +102,8 @@ def higherReviewAvarageProduct():
                      ORDER BY r.helpful DESC;"""
     cur.execute(queryString)
     result = cur.fetchall()
-    for row in result:
-        print(row)
+    resultLabels = ['asin', 'title', 'product_group']
+    print(tabulate(result, headers=resultLabels))
 
     print('\n')
 
@@ -113,7 +112,7 @@ def higherReviewAvarageCategory():
     conn = dbConnect()
     cur = conn.cursor()
 
-    print('5 categorias de produto com a maior média de avaliações úteis positivas por produto\n')
+    print('F) 5 categorias de produto com a maior média de avaliações úteis positivas por produto\n')
     queryString = """SELECT name 
                      FROM category
                      WHERE id IN (SELECT ppc.cat_id
@@ -128,8 +127,8 @@ def higherReviewAvarageCategory():
 """
     cur.execute(queryString)
     result = cur.fetchall()
-    for row in result:
-        print(row)
+    resultLabels = ['name']
+    print(tabulate(result, headers=resultLabels))
 
     print('\n')
 
@@ -138,7 +137,7 @@ def clientMoreComments():
     conn = dbConnect()
     cur = conn.cursor()
 
-    print('10 clientes que mais fizeram comentários por grupo de produto\n')
+    print('G) 10 clientes que mais fizeram comentários por grupo de produto\n')
     queryString = """SELECT rank_clients.id_client
                      FROM ( SELECT p.*, r.*,
                      rank() OVER (
@@ -148,34 +147,74 @@ def clientMoreComments():
                      WHERE RANK <=10"""
     cur.execute(queryString)
     result = cur.fetchall()
-    for row in result:
-        print(row)
+    resultLabels = ['']
+    print(tabulate(result, headers=resultLabels))
 
     print('\n')
 
 
 def dbConnect():
+    try:
+        connection = psycopg2.connect(
+            host=HOST,
+            database=DATABASE,
+            user=USER,
+            password=PASSWORD
+        )
+    except (Exception, psycopg2.Error) as error:
+        print('Error while connecting to PostgreSQL', error)
 
-    return psycopg2.connect(
-        host=HOST,
-        database=DATABASE,
-        user=USER,
-        password=PASSWORD
-    )
+    return connection
+
+
+def prompt():
+    print("Bem-vindo ao Dashboard do TP1 de Banco de dados")
+    print("Integrantes: Aldemir, Erlon e Glenn\n")
+    print("Escolha uma da opções ou digite 'sair' para terminar o programa")
+    print('*--------#--------#--------#--------#--------#--------*--------#--------#--------#--------#--------#--------*\n')
+    print('A) Dado um produto, lista os 5 comentários mais úteis e com maior avaliação e os 5 comentários mais úteis e com menor avaliação.')
+    print('B) Dado um produto, lista os produtos similares com maiores vendas do que ele.')
+    print('C) Dado um produto, mostra a evolução diária das médias de avaliação ao longo do intervalo de tempo coberto no arquivo de entrada.')
+    print('D) Lista os 10 produtos líderes de venda em cada grupo de produtos.')
+    print('E) Lista os 10 produtos com a maior média de avaliações úteis positivas.')
+    print('F) Lista as 5 categorias de produto com a maior média de avaliações úteis positivas por produto.')
+    print('G) Lista os 10 clientes que mais fizeram comentários por grupo de produto.')
+    print('T) Todas as consultas')
+    flag = input(
+        'Digite uma ou mais opções separadas por espaço (ex: a c e): ')
+    print('\n')
+    return flag
 
 
 if __name__ == "__main__":
 
-    usefulComment()
+    flag = prompt()
+    flag = flag.lower().split(' ')
+    while('sair' not in flag):
+        for f in flag:
+            if f == 't':
+                usefulComment()
+                similarMoreSales()
+                dailyEvolution()
+                saleLeaders()
+                higherReviewAvarageProduct()
+                higherReviewAvarageCategory()
+                clientMoreComments()
+                flag = []
+            else:
+                if f == 'a':
+                    usefulComment()
+                elif f == 'b':
+                    similarMoreSales()
+                elif f == 'c':
+                    dailyEvolution()
+                elif f == 'd':
+                    saleLeaders()
+                elif f == 'e':
+                    higherReviewAvarageProduct()
+                elif f == 'f':
+                    higherReviewAvarageCategory()
+                elif f == 'g':
+                    clientMoreComments()
 
-    # similarMoreSales()
-
-    # dailyEvolution()
-
-    # saleLeaders()
-
-    # higherReviewAvarageProduct()
-
-    # higherReviewAvarageCategory()
-
-    # clientMoreComments()
+        flag = prompt()

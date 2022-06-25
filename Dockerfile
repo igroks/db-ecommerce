@@ -4,4 +4,4 @@ WORKDIR /app
 
 COPY . .
 
-RUN pip3 install psycopg2 python-dotenv tqdm
+RUN pip3 install psycopg2 python-dotenv tqdm tabulate

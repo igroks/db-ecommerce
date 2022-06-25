@@ -1,25 +1,48 @@
-# db-ecommerce
+# db-amazon_meta
 
-Practical work of the Database subject at Universidade Federal do Amazonas which aims to design and implement a database on products sold in an e-commerce store, including user ratings and comments about these products. The work consists of creating a Relational Database containing data on product purchases and creating a Dashboard, a panel for monitoring purchase data, generating a series of reports.
+This project is a practical evaluation of the Database I discipline of the Computer Science course at the Federal University of Amazonas.
+
+The purpose of the project is to learn how to build a relational database, in this case using DBMS PostgreSQL, from an Amazon 'amazon-meta' database.
+
+The work consisted of reading and extracting the data, the abstraction of a good model for the database schema, and finally, after the creation of the database, the assembly of queries proposed as evaluative challenges.
 
 ## Useful commands
 
-To donwload input file in JSON format run:
+To run it all in a single command:
 
 ```
-make download-amazon-meta
+make run-all
 ```
 
-To start run:
+To run:
 
 ```
 make run
 ```
 
+To dowload database:
+
+```
+make download-amazon-meta
+```
+
+To pupulate database:
+
+```
+make populate-database
+```
+
 To access container:
 
 ```
-make access-container
+make access-postgres
+make access-python
+```
+
+To start the dashboard:
+
+```
+make start-dashboard
 ```
 
 To stop:
@@ -30,11 +53,11 @@ make stop
 
 ## Authors
 
-**Student:** Aldemir  
-**Email:** @icomp.ufam.edu.br
+**Student:** Aldemir Rodrigues da Silva r  
+**Email:** aldemir.silva@icomp.ufam.edu.br
 
 **Student:** Erlon Pereira Bié  
 **Email:** erlon.bie@icomp.ufam.edu.br
 
-**Student:** Glenn  
-**Email:** @icomp.ufam.edu.br
+**Student:** Glenn Aguiar de Oliveira da Fonseca  
+**Email:** glenn.fonseca@icomp.ufam.edu.br

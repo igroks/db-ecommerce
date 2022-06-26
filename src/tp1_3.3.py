@@ -33,11 +33,11 @@ def bestSimilars():
     asin = getAsin()
     cursor.execute(
         f'''
-           SELECT title FROM  product p INNER JOIN (SELECT similar_asin FROM similars WHERE product_asin ='{asin}') s
+           SELECT * FROM  product p INNER JOIN (SELECT similar_asin FROM similars WHERE product_asin ='{asin}') s
            ON p.asin =  s.similar_asin WHERE  p.salesrank > (SELECT salesrank FROM product WHERE asin = '{asin}');
         '''
     )
-    showResults('b',['TITLE'])
+    showResults('b',['ASIN','TITLE','GROUP','SALESRANK'])
 
 def showDailyEvolution():
     asin = getAsin()

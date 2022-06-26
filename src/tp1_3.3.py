@@ -80,11 +80,13 @@ def topCategoryByProduct():
 def topClients():
     cursor.execute(
         '''
-            SELECT title FROM ( SELECT *, rank() OVER (PARTITION BY product_group ORDER BY salesrank DESC ) FROM Product)
-            rank_group WHERE RANK <=10;
+            SELECT * FROM (SELECT *, ROW_NUMBER() OVER (PARTITION BY grupo ORDER BY reviews DESC) AS n FROM (
+            SELECT p.product_group as grupo, c.id_client as cliente_id, COUNT(*) AS reviews FROM Reviews c INNER JOIN 
+            Product p ON c.product_asin = p.asin GROUP BY p.product_group, c.id_client ORDER BY reviews DESC ) AS x) AS y
+            WHERE n <= 10;
         '''
     )
-    showResults('g',['TITLE'])
+    showResults('g',['GROUP','CUSTOMER','REVIEWS','ORDINATION'])
 
 def menu():
     while True:

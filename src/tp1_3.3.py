@@ -122,7 +122,7 @@ def menu():
             elif option == 'g': topClients()
     
 def close():
-    print('Thanks for using our program!')
+    print('Obrigado por usar nosso programa!')
     
     if connection:
         cursor.close()

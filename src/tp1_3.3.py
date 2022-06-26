@@ -61,11 +61,11 @@ def salesLeadersByGroups():
 def bestEvaluated():
     cursor.execute(
         '''
-            SELECT asin, title, product_group FROM product p INNER JOIN (SELECT product_asin, AVG(rating) rating, AVG(helpful) helpful FROM reviews WHERE rating > 0 GROUP BY product_asin ORDER BY helpful DESC LIMIT 10) r
+            SELECT asin, title, product_group, salesrank FROM product p INNER JOIN (SELECT product_asin, AVG(rating) rating, AVG(helpful) helpful FROM reviews WHERE rating > 0 GROUP BY product_asin ORDER BY helpful DESC LIMIT 10) r
             ON p.asin = r.product_asin ORDER BY r.helpful DESC;
         '''
     )
-    showResults('e',['ASIN','TITLE','GROUP'])
+    showResults('e',['ASIN','TITLE','GROUP','SALESRANK'])
 
 def topCategoryByProduct():
     cursor.execute(

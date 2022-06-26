@@ -52,11 +52,11 @@ def showDailyEvolution():
 def salesLeadersByGroups():
     cursor.execute(
         '''
-           SELECT title FROM ( SELECT *, rank() OVER (PARTITION BY product_group ORDER BY salesrank DESC ) 
+           SELECT * FROM ( SELECT *, rank() OVER (PARTITION BY product_group ORDER BY salesrank DESC ) 
            FROM Product)rank_group WHERE RANK <=10;
         '''
     )
-    showResults('d',['TITLE'])
+    showResults('d',['ASIN','TITLE','GROUP','SALESRANK'])
 
 def bestEvaluated():
     cursor.execute(

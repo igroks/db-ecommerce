@@ -56,7 +56,7 @@ def salesLeadersByGroups():
            FROM Product)rank_group WHERE RANK <=10 LIMIT 60;
         '''
     )
-    showResults('d',['ASIN','TITLE','GROUP','SALESRANK'])
+    showResults('d',['ASIN','TITLE','GROUP','SALESRANK','RANK'])
 
 def bestEvaluated():
     cursor.execute(
@@ -86,7 +86,7 @@ def topClients():
             WHERE n <= 10;
         '''
     )
-    showResults('g',['GROUP','CUSTOMER','REVIEWS','ORDINATION'])
+    showResults('g',['GROUP','CUSTOMER','REVIEWS','RANK'])
 
 def menu():
     while True:

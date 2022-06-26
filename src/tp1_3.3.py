@@ -43,7 +43,7 @@ def showDailyEvolution():
     asin = getAsin()
     cursor.execute(
         f'''
-            SELECT date, AVG(rating) FROM reviews WHERE review.product_asin = '{asin}' GROUP BY date
+            SELECT date, AVG(rating) FROM reviews WHERE reviews.product_asin = '{asin}' GROUP BY date
             ORDER BY date ASC;
         '''
     )
@@ -53,7 +53,7 @@ def salesLeadersByGroups():
     cursor.execute(
         '''
            SELECT * FROM ( SELECT *, rank() OVER (PARTITION BY product_group ORDER BY salesrank DESC ) 
-           FROM Product)rank_group WHERE RANK <=10;
+           FROM Product)rank_group WHERE RANK <=10 LIMIT 60;
         '''
     )
     showResults('d',['ASIN','TITLE','GROUP','SALESRANK'])

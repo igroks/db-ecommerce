@@ -2,7 +2,7 @@ run-all: download-amazon-meta build run populate-database start-dashboard stop
 
 .PHONY: download-amazon-meta
 download-amazon-meta:
-	@sh scripts/download-amazon-meta.sh
+	@sh download-amazon-meta.sh
 
 .PHONY: build
 build:

@@ -4,12 +4,13 @@ import psycopg2
 from dotenv import load_dotenv
 from tqdm import tqdm
 
-load_dotenv('../.env')
+load_dotenv('.env')
 USER = os.getenv('POSTGRES_USER')
 PASSWORD = os.getenv('POSTGRES_PASSWORD')
 HOST = os.getenv('POSTGRES_HOST')
 PORT = os.getenv('POSTGRES_DOCKER_PORT')
 DATABASE = os.getenv('POSTGRES_DATABASE')
+INPUT = os.getenv('INPUT_FILE')
 
 lineContent = re.compile(r'^(?:    )?([A-Za-z]+):\s*(.+)$')
 reviewsContent = re.compile(
@@ -75,7 +76,7 @@ class Products_Per_Category(object):
 def parseData():
 
     products = []
-    with open('../resources/amazon-meta.txt') as f:
+    with open(INPUT) as f:
         lines = f.readlines()
         inBlock = ''
         categoriesSet = set()
@@ -164,7 +165,7 @@ def dbConnect():
     )
 
     cur = conn.cursor()
-    script = open('../sql_create_schema.txt', 'r')
+    script = open('sql_create_schema.txt', 'r')
     cur.execute(script.read())
     conn.commit()
 

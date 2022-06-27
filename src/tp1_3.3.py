@@ -3,7 +3,7 @@ import psycopg2
 from dotenv import load_dotenv
 from tabulate import tabulate
 
-load_dotenv('../.env')
+load_dotenv('.env')
 INPUTFILE = os.getenv('INPUT_FILE')
 USER = os.getenv('POSTGRES_USER')
 PASSWORD = os.getenv('POSTGRES_PASSWORD')

@@ -26,10 +26,10 @@ To dowload database:
 make download-amazon-meta
 ```
 
-To pupulate database:
+To insert database:
 
 ```
-make populate-database
+make insert-database
 ```
 
 To access container:
@@ -39,16 +39,16 @@ make access-postgres
 make access-python
 ```
 
-To start the dashboard:
+To run the dashboard:
 
 ```
-make start-dashboard
+make run-dashboard
 ```
 
-To stop:
+To end:
 
 ```
-make stop
+make end
 ```
 
 ## Authors

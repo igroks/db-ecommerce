@@ -13,7 +13,7 @@ services:
       - $POSTGRES_LOCAL_PORT:$POSTGRES_DOCKER_PORT
     networks:
       - app-net
-    container_name: "postgres"
+    container_name: "tp1_aldemir_erlon_glenn_postgres"
 
   python:
     build:
@@ -26,7 +26,7 @@ services:
       - app-net
     stdin_open: true
     tty: true
-    container_name: "python"
+    container_name: "tp1_aldemir_erlon_glenn_python"
 
 volumes:
   postgres:

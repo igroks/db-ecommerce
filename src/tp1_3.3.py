@@ -38,19 +38,19 @@ def usefulComment():
 def similarMoreSales():
     conn = dbConnect()
     cur = conn.cursor()
+    asin = input('Escolha o ASIN: ')
 
     print('B) os 5 comentários mais úteis e com maior avaliação\n')
-    queryString = """SELECT title
+    queryString = f"""SELECT asin, title, product_group, salesrank
                      FROM  product p 
-                     INNER JOIN (SELECT s_asin FROM similars WHERE p_asin ='0827229534') s
+                     INNER JOIN (SELECT s_asin FROM similars WHERE p_asin ='{asin}') s
                         ON p.asin =  s.s_asin
-                     WHERE  p.salesrank > (SELECT salesrank FROM product WHERE asin = '0827229534');
+                     WHERE  p.salesrank > (SELECT salesrank FROM product WHERE asin = '{asin}');
     """
     cur.execute(queryString)
     result = cur.fetchall()
-    resultLabels = ['title']
+    resultLabels = ['asin','title','product_group','salesrank']
     print(tabulate(result, headers=resultLabels))
-    print(tabulate(result))
 
     print('\n')
 
@@ -58,11 +58,12 @@ def similarMoreSales():
 def dailyEvolution():
     conn = dbConnect()
     cur = conn.cursor()
+    asin = input('Escolha o ASIN: ')
 
     print('C) a evolução diária das médias de avaliação ao longo do intervalo de tempo coberto no arquivo de entrada\n')
-    queryString = """SELECT date, AVG(rating)
+    queryString = f"""SELECT date, AVG(rating)
            FROM comments
-           WHERE product_asin = '0231118597'
+           WHERE product_asin = '{asin}'
            GROUP BY date
            ORDER BY date ASC;"""
     cur.execute(queryString)
@@ -78,12 +79,12 @@ def saleLeaders():
     cur = conn.cursor()
 
     print('D) 10 produtos líderes de venda em cada grupo de produtos\n')
-    queryString = """SELECT title 
-                     FROM ( SELECT title, rank() OVER (PARTITION BY product_group ORDER BY salesrank DESC ) 
-                     FROM Product ) Product WHERE RANK <=10 LIMIT 40;"""
+    queryString = """SELECT *
+                     FROM ( SELECT *, rank() OVER (PARTITION BY product_group ORDER BY salesrank DESC ) 
+                     FROM Product ) Product WHERE RANK <=10 LIMIT 60;"""
     cur.execute(queryString)
     result = cur.fetchall()
-    resultLabels = ['title']
+    resultLabels = ['product_asin','title', 'group', 'salesrank','n']
     print(tabulate(result, headers=resultLabels))
 
     print('\n')
@@ -94,15 +95,15 @@ def higherReviewAvarageProduct():
     cur = conn.cursor()
 
     print('E) 10 produtos com a maior média de avaliações úteis positivas por produto\n')
-    queryString = """SELECT asin, title, product_group 
+    queryString = """SELECT asin, title, product_group, salesrank
                      FROM product p
-                     INNER JOIN 
-                     (SELECT product_asin, AVG(rating) rating, AVG(helpful) helpful FROM comments WHERE rating > 0 GROUP BY product_asin ORDER BY helpful DESC LIMIT 10) r 
-                        ON p.asin = r.product_asin
-                     ORDER BY r.helpful DESC;"""
+                     INNER JOIN
+                     (SELECT product_asin, AVG(rating) rating, AVG(helpful) helpful FROM comments WHERE rating > 0 GROUP BY product_asin ORDER BY helpful DESC LIMIT 10) c
+                    ON p.asin = c.product_asin
+                    ORDER BY c.helpful DESC;"""
     cur.execute(queryString)
     result = cur.fetchall()
-    resultLabels = ['asin', 'title', 'product_group']
+    resultLabels = ['asin', 'title', 'product_group','salesrank']
     print(tabulate(result, headers=resultLabels))
 
     print('\n')
@@ -113,18 +114,23 @@ def higherReviewAvarageCategory():
     cur = conn.cursor()
 
     print('F) 5 categorias de produto com a maior média de avaliações úteis positivas por produto\n')
-    queryString = """SELECT name 
-                     FROM category
-                     WHERE id IN (SELECT ppc.cat_id
-	                 FROM category c
-	                 INNER JOIN products_per_category ppc 
-                        ON c.id = ppc.cat_id
-                     INNER JOIN comments r 
-                        ON r.product_asin = ppc.ppc_asin
-                     GROUP BY ppc.cat_id
-                     ORDER BY AVG(helpful) DESC 
-                     LIMIT 5);
-"""
+    queryString = """ SELECT name 
+                      FROM category WHERE id IN (SELECT ppc.cat_id FROM category c INNER JOIN products_per_category ppc
+    	              ON c.id = ppc.cat_id INNER JOIN comments x ON x.product_asin = ppc.ppc_asin 
+                      GROUP BY ppc.cat_id 
+                      ORDER BY AVG(helpful) DESC LIMIT 5);"""
+    # queryString = """SELECT name 
+    #                  FROM category
+    #                  WHERE id IN (SELECT ppc.cat_id
+	                 # FROM category c
+	                 # INNER JOIN products_per_category ppc 
+    #                     ON c.id = ppc.cat_id
+    #                  INNER JOIN comments r 
+    #                     ON r.product_asin = ppc.ppc_asin
+    #                  GROUP BY ppc.cat_id
+    #                  ORDER BY AVG(helpful) DESC 
+    #                  LIMIT 5);
+# """
     cur.execute(queryString)
     result = cur.fetchall()
     resultLabels = ['name']
@@ -151,7 +157,7 @@ def clientMoreComments():
                      WHERE n <= 10;"""
     cur.execute(queryString)
     result = cur.fetchall()
-    resultLabels = ['']
+    resultLabels = ['group','customer','comments','n']
     print(tabulate(result, headers=resultLabels))
 
     print('\n')

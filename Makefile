@@ -1,4 +1,4 @@
-run-all: download-amazon-meta build run populate-database start-dashboard stop	
+run-all: download-amazon-meta build run insert-database run-dashboard end	
 
 .PHONY: download-amazon-meta
 download-amazon-meta:
@@ -12,23 +12,23 @@ build:
 run:
 	@docker-compose up -d
 
-.PHONY: populate-database
-populate-database:
-	@docker exec python python3 src/tp1_3.2.py
+.PHONY: insert-database
+insert-database:
+	@docker exec tp1_aldemir_erlon_glenn_python python3 src/tp1_3.2.py
 
-.PHONY: start-dashboard
-start-dashboard:
-	@docker exec -it python python3 src/tp1_3.3.py
+.PHONY: run-dashboard
+run-dashboard:
+	@docker exec -it tp1_aldemir_erlon_glenn_python python3 src/tp1_3.3.py
 
-.PHONY: stop
-stop:
+.PHONY: end
+end:
 	@docker-compose down
 
 .PHONY: access-postgres
 access-postgres:
-	@docker exec -it postgres psql -U postgres
+	@docker exec -it tp1_aldemir_erlon_glenn_postgres psql -U postgres
 
 .PHONY: access-python
 access-python:
-	@docker exec -it python bash 
+	@docker exec -it tp1_aldemir_erlon_glenn_python bash 
 
